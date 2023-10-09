@@ -2,29 +2,23 @@ from typing import Any, Optional, Dict
 
 from kaggle_environments import make
 import gym
+from gym import spaces
 
-class LuxEnv(gym.Env):
+from reward_spaces import GameResultReward
+
+class ConnectFour(gym.Env):
     metadata = {"render.modes": []}
 
-    def __init__(
-            self,
-            act_space: BaseActSpace,
-            obs_space: BaseObsSpace,
-            configuration: Optional[Dict[str, Any]] = None,
-            seed: Optional[int] = None,
-            run_game_automatically: bool = True,
-            restart_subproc_after_n_resets: int = 100
-    ):
-        super(LuxEnv, self).__init__()
-        self.obs_space = obs_space
-        self.action_space = act_space
+    def __init__(self):
+        super(ConnectFour, self).__init__()
+        n_cols = 7
+        n_rows = 5
+        self.obs_space = spaces.Box(0, 2, (n_cols, n_rows), dtype=int)
+        self.action_space = spaces.Discrete(n_rows)
         self.default_reward_space = GameResultReward()
-        self.observation_space = self.obs_space.get_obs_spec()
-        self.board_dims = MAX_BOARD_SIZE
-        self.run_game_automatically = run_game_automatically
-        self.restart_subproc_after_n_resets = restart_subproc_after_n_resets
 
         self.game_state = Game()
+        configuration, seed = None, None
         if configuration is not None:
             self.configuration = configuration
         else:
@@ -37,11 +31,3 @@ class LuxEnv(gym.Env):
             self.seed()
         self.done = False
         self.info = {}
-        self.pos_to_unit_dict = dict()
-        self.pos_to_city_tile_dict = dict()
-        self.reset_count = 0
-
-        self._dimension_process = None
-        self._q = None
-        self._t = None
-        self._restart_dimension_process()

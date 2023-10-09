@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import logging
 
 import numpy as np
+from scipy.stats import rankdata
 
 class RewardSpec(NamedTuple):
     reward_min: float
@@ -76,6 +77,4 @@ class GameResultReward(FullGameRewardSpace):
 
     @staticmethod
     def compute_player_reward(player: Player):
-        lichen_count = player.lichen_count
-        robot_count = player.robot_count
-        return lichen_count * 10_000 + robot_count
+        return player.winning
