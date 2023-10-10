@@ -4,6 +4,7 @@ from kaggle_environments import make
 import gym
 from gym import spaces
 
+from connectx.connectx_gym.game import Game
 from reward_spaces import GameResultReward
 
 class ConnectFour(gym.Env):
