@@ -11,22 +11,31 @@ class Game:
     detection_kernels = [horizontal_kernel, vertical_kernel, diag1_kernel, diag2_kernel]
 
     def __init__(self, config=None):
+        self.config = config
+
         rows = config.rows
         cols = config.cols
         self.board = np.zeros((rows, cols), dtype=int)
+
         self.players = [1, 2]
         self.winner = None
         self.turn = 0
         self.done = False
+        self.info = {}
 
     def step(self, col):
-        self.board[self.board[:,col].argmin(), col] = self.players[self.turn]
+        self.turn = (self.turn + 1) % 2
+        self.board[self.board[:,col].argmax()-1, col] = self.players[self.turn]
 
-        if self.winning_move or self.no_valid_moves:
+        if self.turn > IN_A_ROW and (self.winning_move or self.no_valid_moves):
             self.winner = self.players[self.turn]
             self.done = True
-        else:
-            self.turn = (self.turn + 1) % 2
+
+    def reset(self):
+        self.board = np.zeros((self.config.rows, self.config.cols), dtype=np.uint8)
+        self.turn = 0
+        self.done = False
+        self.info = {}
 
     def winning_move(self):
         for kernel in self.detection_kernels:
