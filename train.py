@@ -1,7 +1,8 @@
+import numpy as np
 import os
 import json
 
-path = 'C:\\Users\\nick.gorichs\\PycharmProjects\\Connect_Four_2\\connectx\\replays\\'
+path = '.\\connectx\\base_replays\\'
 for dir, folders, files in os.walk(path):
     fnames = files
 
@@ -10,11 +11,11 @@ for fname in fnames:
         match = json.load(data)
     break
 
-data = {}
-for _,step in match.items():
-    data['player_1'] = {
-        'status': step[0]['status'],
-        'action': step[0]['action'],
-        'reward': step[0]['reward'],
-        'info': step[0]['info']
-    }
+for key,val in match.items():
+    print(key)
+    for key_,val_ in val.items():
+        if key_ == "board":
+            print(np.array(val_).reshape((6,7)))
+        else:
+            print(val_)
+    print()
