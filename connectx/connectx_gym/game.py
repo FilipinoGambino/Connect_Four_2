@@ -18,7 +18,7 @@ class Game:
         self.board = np.zeros((rows, cols), dtype=int)
 
         self.players = [1, 2]
-        self.winner = None
+        self.reward = None
         self.turn = 0
         self.done = False
         self.info = {}
@@ -28,7 +28,7 @@ class Game:
         self.board[self.board[:,col].argmax()-1, col] = self.players[self.turn]
 
         if self.turn > IN_A_ROW and (self.winning_move or self.no_valid_moves):
-            self.winner = self.players[self.turn]
+            self.reward = self.players[self.turn]
             self.done = True
 
     def reset(self):
