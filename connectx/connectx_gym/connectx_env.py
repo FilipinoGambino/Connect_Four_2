@@ -32,3 +32,15 @@ class ConnectFour(gym.Env):
             self.seed()
         self.done = False
         self.info = {}
+
+    def step(self, action):
+        self.game_state.step(action)
+
+    def reset(self, seed=None, options=None):
+        self.game_state.reset()
+
+    def render(self, **kwargs):
+        print(self.game_state.board)
+
+    def close(self):
+        raise NotImplemented
