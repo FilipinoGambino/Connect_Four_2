@@ -3,7 +3,8 @@ from abc import ABC, abstractmethod
 import logging
 
 import numpy as np
-from scipy.stats import rankdata
+
+# from .game import Game
 
 class RewardSpec(NamedTuple):
     reward_min: float
@@ -26,7 +27,7 @@ class BaseRewardSpace(ABC):
         pass
 
     @abstractmethod
-    def compute_rewards_and_done(self, game_state: GameState, done: bool) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards_and_done(self, game_state: Game, done: bool) -> Tuple[Tuple[float, float], bool]:
         pass
 
     def get_info(self) -> Dict[str, np.ndarray]:
@@ -38,11 +39,11 @@ class FullGameRewardSpace(BaseRewardSpace):
     """
     A class used for defining a reward space for the full game.
     """
-    def compute_rewards_and_done(self, game_state: GameState, done: bool) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards_and_done(self, game_state: Game, done: bool) -> Tuple[Tuple[float, float], bool]:
         return self.compute_rewards(game_state, done), done
 
     @abstractmethod
-    def compute_rewards(self, game_state: GameState, done: bool) -> Tuple[float, float]:
+    def compute_rewards(self, game_state: Game, done: bool) -> Tuple[float, float]:
         pass
 
 
@@ -60,19 +61,16 @@ class GameResultReward(FullGameRewardSpace):
         super(GameResultReward, self).__init__(**kwargs)
         self.early_stop = early_stop
 
-    def compute_rewards_and_done(self, game_state: GameState, done: bool) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards_and_done(self, game_state: Game, done: bool) -> Tuple[Tuple[float, float], bool]:
         if self.early_stop:
             done = done or should_early_stop(game_state)
         return self.compute_rewards(game_state, done), done
 
-    def compute_rewards(self, game_state: GameState, done: bool) -> Tuple[float, float]:
+    def compute_rewards(self, game_state: Game, done: bool) -> Tuple[float, float]:
         if not done:
             return 0., 0.
 
-        # reward here is defined as the total lichen per player with robot count as a tie-breaking mechanism
         rewards = [int(GameResultReward.compute_player_reward(p)) for p in game_state.players]
-        # i.e. reward = (1st, 2nd) => * 2 = (2, 4) => -3 = (-1, 1) or for ties reward = (2nd, 2nd) => (1, 1)
-        rewards = (rankdata(rewards)) * 2. - 3.
         return tuple(rewards)
 
     @staticmethod
