@@ -6,10 +6,10 @@ import statistics
 import tqdm
 import os
 import json
-from gym import spaces
+
 
 # from kaggle_environments import make
-from connectx.connectx_gym.connectx_env import ConnectFour
+from connectx.connectx_env.envs import ConnectFour
 from connectx.actor_critic.policy import ActorCritic
 
 from typing import Tuple
@@ -37,8 +37,8 @@ from typing import Tuple
 
 # Create the environment
 
-env = gym.make(ConnectFour)
-
+# env = gym.make('connectx_env:connectx_env/Connect_Four-v0')
+env = ConnectFour()
 # Set seed for experiment reproducibility
 seed = 42
 tf.random.set_seed(seed)

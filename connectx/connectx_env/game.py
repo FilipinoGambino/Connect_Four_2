@@ -1,9 +1,6 @@
-import numpy as np
 from scipy.signal import convolve2d
-from scipy.stats import rankdata
 
-from ..connectx_game.game_objects import Player, GameBoard
-from connectx.connectx_gym.reward_spaces import GameResultReward
+from .game_objects import Player, GameBoard
 
 IN_A_ROW = 4
 
@@ -20,16 +17,16 @@ class Game:
         self.done = False
         self.info = {}
 
-    def update(self, game_state, col):
+    def step(self, col):
         self.turn += 1
-        active_player = self.players[self.turn % 2]
+        active_player = self.turn % 2
+        inactive_player = (self.turn + 1) % 2
 
-        self.board[self.board[:,col].argmax()-1, col] = active_player.mark
+        self.board.place_mark(col, self.players[active_player].mark)
 
         if self.turn > IN_A_ROW and self.winning_move:
-            self.players[self.turn].status = "WIN"
-            for player in self.players:
-                player.reward = self.reward_space.compute_player_reward(player)
+            self.players[active_player].winner()
+            self.players[inactive_player].loser()
             self.done = True
         elif self.turn > IN_A_ROW and self.no_valid_moves:
             # Tie

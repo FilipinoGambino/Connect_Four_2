@@ -1,9 +1,9 @@
-from kaggle_environments import make
 import gym
 from gym import spaces
+from kaggle_environments import make
+from connectx.connectx_gym import GameResultReward
+# from connectx.connectx_game.game import Game
 
-from connectx.connectx_env.game import Game
-from .reward_spaces import GameResultReward
 
 class ConnectFour(gym.Env):
     metadata = {"render.modes": []}
@@ -16,12 +16,13 @@ class ConnectFour(gym.Env):
         self.action_space = spaces.Discrete(n_rows)
         self.reward_space = GameResultReward()
 
-        self.game_state = Game()
+        # self.game_state = Game()
+        self.game_state = make('connectx')
 
         if configuration is not None:
             self.configuration = configuration
         else:
-            self.configuration = make("connectx").configuration
+            self.configuration = self.game_state.configuration
             # 2: warnings, 1: errors, 0: none
             self.configuration["loglevel"] = 0
         if seed is not None:
@@ -43,10 +44,10 @@ class ConnectFour(gym.Env):
         )
 
     def reset(self, seed=None, options=None):
-        self.game_state = Game()
+        self.game_state = make('connectx')
 
     def render(self, **kwargs):
-        print(self.game_state.board)
+        print(self.game_state.state)
 
     def close(self):
         raise NotImplemented

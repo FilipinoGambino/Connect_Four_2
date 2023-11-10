@@ -1,19 +1,19 @@
 import numpy as np
 
-from ..connectx_game.game_constants import Constants
+from game_constants import Constants
 
 IN_A_ROW = Constants.IN_A_ROW
 
 class Player:
     def __init__(self, mark):
         self.mark = mark
-        self.victory_status = None
+        self.victory = False
 
     def winner(self):
-        self.victory_status = "WINNER"
+        self.victory = True
 
     def loser(self):
-        self.victory_status = "LOSER"
+        self.victory = False
 
 class GameBoard:
     def __init__(self, height, width):
@@ -27,6 +27,10 @@ class GameBoard:
         diag2_kernel = np.fliplr(diag1_kernel)
 
         self.victory_kernels = [horizontal_kernel, vertical_kernel, diag1_kernel, diag2_kernel]
+
+    def place_mark(self, col, mark):
+        row = self.lowest_valid_rows()[col]
+        self.board[row, col] = mark
 
     def lowest_valid_rows(self):
         mask = self.board != 0
