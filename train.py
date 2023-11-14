@@ -5,11 +5,11 @@ import collections
 import statistics
 import tqdm
 import os
-import json
+import yaml
 
 
 # from kaggle_environments import make
-from connectx.connectx_env.envs import ConnectFour
+from connectx.connectx_gym import create_env
 from connectx.actor_critic.policy import ActorCritic
 
 from typing import Tuple
@@ -38,7 +38,9 @@ from typing import Tuple
 # Create the environment
 
 # env = gym.make('connectx_env:connectx_env/Connect_Four-v0')
-env = ConnectFour()
+flags = yaml.safe_load(open('flags.yaml', 'r'))
+env = create_env(flags, 'cpu')
+print(env)
 # Set seed for experiment reproducibility
 seed = 42
 tf.random.set_seed(seed)
@@ -225,3 +227,6 @@ for i in t:
         break
 
 print(f'\nSolved at episode {i}: average reward: {running_reward:.2f}!')
+
+if __name__=='__main__':
+    print('hi')

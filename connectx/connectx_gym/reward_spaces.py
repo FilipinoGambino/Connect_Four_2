@@ -70,7 +70,7 @@ class GameResultReward(FullGameRewardSpace):
     def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, float]:
         if not game_state.done:
             return 0., 0.
-
+        rewards = []
         rewards = [int(GameResultReward.compute_player_reward(p)) for p in game_state.players]
         return tuple(rewards)
 

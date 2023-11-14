@@ -1,1 +1,0 @@
-from connectx.connectx_env.envs.connect_four import ConnectFour
