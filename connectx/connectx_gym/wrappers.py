@@ -2,10 +2,30 @@ import gym
 import torch
 import numpy as np
 
+from kaggle_environments.core import Environment
 from typing import Dict, List, NoReturn, Optional, Union, Tuple
 
 from . import ConnectFour
 from .reward_spaces import BaseRewardSpace
+
+class KaggleToGymWrapper(gym.Wrapper):
+    def __init__(self, env: Environment, act_space, obs_space):
+        super(KaggleToGymWrapper, self).__init__(env)
+        self.env = env
+        self.action_space = act_space
+        self.observation_space = obs_space
+
+    def step(self, action: ActType) -> Tuple[ObsType, float, bool, bool, dict]:
+        player1, player2 = self.env.step(action)
+
+        # return (obs, reward, done, truncate, info)
+
+    def reset(self):
+        self.env.reset()
+
+    def render(self, mode='human'):
+        self.env.render(mode=mode)
+
 
 class LoggingEnv(gym.Wrapper):
     def __init__(self, env: gym.Env, reward_space: BaseRewardSpace):
@@ -21,8 +41,8 @@ class LoggingEnv(gym.Wrapper):
         return info
 
     def reset(self, **kwargs):
-        obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
-        self._reset_peak_vals()
+        obs, reward, done, truncate, info = super(LoggingEnv, self).reset(**kwargs)
+        # self._reset_peak_vals()
         self.reward_sums = [0., 0.]
         self.actions_distributions = {
             key: 0. for key in self.actions_distributions.keys()
@@ -30,11 +50,9 @@ class LoggingEnv(gym.Wrapper):
         return obs, reward, done, self.info(info, reward)
 
     def step(self, action: Dict[str, np.ndarray]):
-        obs, reward, done, info = super(LoggingEnv, self).step(action)
+        obs, reward, done, truncate, info = super(LoggingEnv, self).step(action)
         return obs, reward, done, self.info(info, reward)
 
-    def _reset_peak_vals(self) -> NoReturn:
-        pass
 
 class RewardSpaceWrapper(gym.Wrapper):
     def __init__(self, env: ConnectFour, reward_space: BaseRewardSpace):

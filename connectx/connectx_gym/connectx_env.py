@@ -1,9 +1,9 @@
-from kaggle_environments import make
+from kaggle_environments import make, Environment
 import gym
 
 from .reward_spaces import GameResultReward
 
-class ConnectFour(gym.Env):
+class ConnectFour(gym.Env, Environment):
     metadata = {"render.modes": []}
 
     def __init__(

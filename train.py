@@ -6,7 +6,7 @@ import statistics
 import tqdm
 import os
 import yaml
-
+from types import SimpleNamespace
 
 # from kaggle_environments import make
 from connectx.connectx_gym import create_env
@@ -38,7 +38,14 @@ from typing import Tuple
 # Create the environment
 
 # env = gym.make('connectx_env:connectx_env/Connect_Four-v0')
-flags = yaml.safe_load(open('flags.yaml', 'r'))
+
+def load_object(dct):
+    return SimpleNamespace(**dct)
+
+with open('flags.yaml', 'r') as yaml_file:
+    args = yaml.safe_load(yaml_file)
+    flags = load_object(args)
+
 env = create_env(flags, 'cpu')
 print(env)
 # Set seed for experiment reproducibility
