@@ -15,9 +15,8 @@ def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed
         seed = flags.seed
     envs = []
     for i in range(flags.n_actor_envs):
-        env = make('connectx')
         env = KaggleToGymWrapper(
-            env,
+            make('connectx'),
             act_space=flags.act_space(),
             obs_space=create_flexible_obs_space(flags, teacher_flags),
             # seed=seed

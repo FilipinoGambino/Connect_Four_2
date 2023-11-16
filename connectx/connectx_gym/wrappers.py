@@ -8,19 +8,30 @@ from typing import Dict, List, NoReturn, Optional, Union, Tuple
 from . import ConnectFour
 from .reward_spaces import BaseRewardSpace
 
-class KaggleToGymWrapper(gym.Wrapper):
+class KaggleToGymWrapper(gym.Env):
     def __init__(self, env: Environment, act_space, obs_space):
-        super(KaggleToGymWrapper, self).__init__(env)
+        # super(KaggleToGymWrapper, self).__init__(env)
         self.env = env
         self.action_space = act_space
         self.observation_space = obs_space
 
-    def step(self, action: ActType) -> Tuple[ObsType, float, bool, bool, dict]:
+    def step(self, action: int) -> Tuple[dict, Tuple[float, float], bool, bool, dict]:
         player1, player2 = self.env.step(action)
 
-        # return (obs, reward, done, truncate, info)
+        rows = self.env.configuration['rows']
+        cols = self.env.configuration['columns']
+        obs = {
+            "board": np.array(player1['observation']['board']).reshape((rows, cols)),
+            "turn": player1['turn']
+        }
 
-    def reset(self):
+        reward = (player1['reward'], player2['reward'])
+        done = True if player1['status'] == 'DONE' else False
+        info = {}
+
+        return obs, _, done, info
+
+    def reset(self, **kwargs):
         self.env.reset()
 
     def render(self, mode='human'):
@@ -41,7 +52,7 @@ class LoggingEnv(gym.Wrapper):
         return info
 
     def reset(self, **kwargs):
-        obs, reward, done, truncate, info = super(LoggingEnv, self).reset(**kwargs)
+        obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
         # self._reset_peak_vals()
         self.reward_sums = [0., 0.]
         self.actions_distributions = {
@@ -105,7 +116,7 @@ class VecEnv(gym.Env):
             # Check if env finished
             if self.last_outs[i][2]:
                 # noinspection PyArgumentList
-                self.last_outs[i] = env.reset(**kwargs)
+                self.last_outs[i] = env.reset()
         return VecEnv._vectorize_env_outs(self.last_outs)
 
     def step(self, action: Dict[str, np.ndarray]):
