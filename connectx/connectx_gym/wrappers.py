@@ -6,7 +6,8 @@ from kaggle_environments.core import Environment
 from typing import Dict, List, NoReturn, Optional, Union, Tuple
 
 from . import ConnectFour
-from .reward_spaces import BaseRewardSpace
+from .reward_spaces import BaseRewardSpace, GameResultReward
+
 
 class KaggleToGymWrapper(gym.Env):
     def __init__(self, env: Environment, act_space, obs_space):
@@ -14,22 +15,42 @@ class KaggleToGymWrapper(gym.Env):
         self.env = env
         self.action_space = act_space
         self.observation_space = obs_space
+        self.default_reward_space = GameResultReward()
 
-    def step(self, action: int) -> Tuple[dict, Tuple[float, float], bool, bool, dict]:
-        player1, player2 = self.env.step(action)
+    def observation(self, actions):
+        player1, player2 = self.env.step(actions)
 
         rows = self.env.configuration['rows']
         cols = self.env.configuration['columns']
+        board = np.array(player1['observation']['board']).reshape((rows, cols))
+
         obs = {
-            "board": np.array(player1['observation']['board']).reshape((rows, cols)),
-            "turn": player1['turn']
+            "boards": {
+                "board_base": board,
+                "empty_spaces": np.where(board == 0, 1, 0),
+                "board_p1_view": np.where(board == player1['observation']['mark'], 1, 0),
+                "board_p2_view": np.where(board == player2['observation']['mark'], 1, 0),
+            },
+            "turn": player1['observation']['step'],
+            "player1": {
+                "action": player1['action'],
+                "reward": player1['reward'],
+                "status": player1['status']
+            },
+            "player2": {
+                "action": player2['action'],
+                "reward": player2['reward'],
+                "status": player2['status']
+            }
         }
+        return obs
 
-        reward = (player1['reward'], player2['reward'])
-        done = True if player1['status'] == 'DONE' else False
-        info = {}
+    def step(self, actions: List[int, int]) -> Tuple[dict, Tuple[float, float], bool, dict]:
+        obs = self.observation(actions)
+        done = self.env.done
+        reward = self.default_reward_space.compute_rewards_and_done(obs, done)
 
-        return obs, _, done, info
+        return obs, reward, done, {}
 
     def reset(self, **kwargs):
         self.env.reset()
@@ -61,7 +82,7 @@ class LoggingEnv(gym.Wrapper):
         return obs, reward, done, self.info(info, reward)
 
     def step(self, action: Dict[str, np.ndarray]):
-        obs, reward, done, truncate, info = super(LoggingEnv, self).step(action)
+        obs, reward, done, info = super(LoggingEnv, self).step(action)
         return obs, reward, done, self.info(info, reward)
 
 
@@ -71,7 +92,7 @@ class RewardSpaceWrapper(gym.Wrapper):
         self.reward_space = reward_space
 
     def _get_rewards_and_done(self) -> Tuple[Tuple[float, float], bool]:
-        rewards, done = self.reward_space.compute_rewards_and_done(self.unwrapped.game_state, self.done)
+        rewards, done = self.reward_space.compute_rewards_and_done(self.unwrapped.env, self.done)
         if self.unwrapped.done and not done:
             raise RuntimeError("Reward space did not return done, but the connectx engine is done.")
         self.unwrapped.done = done
@@ -79,11 +100,11 @@ class RewardSpaceWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, _, _, info = super(RewardSpaceWrapper, self).reset(**kwargs)
-        return (obs, *self._get_rewards_and_done(), info)
+        return obs, *self._get_rewards_and_done(), info
 
     def step(self, action):
         obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
-        return (obs, *self._get_rewards_and_done(), info)
+        return obs, *self._get_rewards_and_done(), info
 
 class VecEnv(gym.Env):
     def __init__(self, envs: List[gym.Env]):

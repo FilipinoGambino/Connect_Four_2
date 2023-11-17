@@ -4,9 +4,6 @@ import logging
 
 import numpy as np
 
-from kaggle_environments.core import Environment
-# from .connectx_env.game_objects import Player
-
 class RewardSpec(NamedTuple):
     reward_min: float
     reward_max: float
@@ -28,7 +25,7 @@ class BaseRewardSpace(ABC):
         pass
 
     @abstractmethod
-    def compute_rewards_and_done(self, game_state: Environment, done: bool) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards_and_done(self, game_state: dict, done: bool) -> Tuple[Tuple[float, float], bool]:
         pass
 
     def get_info(self) -> Dict[str, np.ndarray]:
@@ -40,11 +37,11 @@ class FullGameRewardSpace(BaseRewardSpace):
     """
     A class used for defining a reward space for the full game.
     """
-    def compute_rewards_and_done(self, game_state: Environment, done: bool) -> Tuple[Tuple[float, float], bool]:
-        return self.compute_rewards(game_state), done
+    def compute_rewards_and_done(self, game_state: dict, done: bool) -> Tuple[Tuple[float, float], bool]:
+        return self.compute_rewards(game_state, done), done
 
     @abstractmethod
-    def compute_rewards(self, game_state: Environment) -> Tuple[float, float]:
+    def compute_rewards(self, game_state: dict, done: bool) -> Tuple[float, float]:
         pass
 
 
@@ -62,16 +59,15 @@ class GameResultReward(FullGameRewardSpace):
         super(GameResultReward, self).__init__(**kwargs)
         self.early_stop = early_stop
 
-    def compute_rewards_and_done(self, game_state: Environment, done: bool) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards_and_done(self, game_state: dict, done: bool) -> Tuple[Tuple[float, float], bool]:
         # if self.early_stop:
         #     done = done or should_early_stop(game_state)
-        return self.compute_rewards(game_state), done
+        return self.compute_rewards(game_state, done), done
 
-    def compute_rewards(self, game_state: Environment) -> Tuple[float, float]:
-        if not game_state.done:
+    def compute_rewards(self, game_state: dict, done: bool) -> Tuple[float, float]:
+        if not done:
             return 0., 0.
-        rewards = [player['reward'] for player in game_state]
-        # rewards = [int(GameResultReward.compute_player_reward(p)) for p in game_state.players]
+        rewards = [game_state['player1']['reward'], game_state['player2']['reward']]
         return tuple(rewards)
 
     # @staticmethod
