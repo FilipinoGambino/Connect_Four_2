@@ -65,10 +65,10 @@ class GameResultReward(FullGameRewardSpace):
         return self.compute_rewards(game_state, done), done
 
     def compute_rewards(self, game_state: dict, done: bool) -> Tuple[float, float]:
-        if not done:
-            return 0., 0.
-        rewards = [game_state['player1']['reward'], game_state['player2']['reward']]
-        return tuple(rewards)
+        # if not done:
+        #     return 0., 0.
+        rewards = (game_state['player1']['reward'], game_state['player2']['reward'])
+        return rewards
 
     # @staticmethod
     # def compute_player_reward(player: Player):

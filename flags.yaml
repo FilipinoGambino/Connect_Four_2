@@ -1,3 +1,11 @@
 seed: 42
+device: cpu
 n_actor_envs: 2
 act_space: BasicActionSpace
+obs_space: FixedShapeContinuousObs
+reward_space: GameResultReward
+optimizer_class: Adam
+actor_device: cpu
+learner_device: cpu
+obs_space_kwargs: {}
+reward_space_kwargs: {}
