@@ -20,11 +20,8 @@ class BaseActSpace(ABC):
     ) -> List[str]:
         pass
 
-    @abstractmethod
-    def get_available_actions_mask(
-            self,
-            game_state: Environment,
-    ) -> Dict[str, np.ndarray]:
+    @staticmethod
+    def get_available_actions_mask(game_state: Environment) -> Dict[str, np.ndarray]:
         pass
 
 
@@ -45,10 +42,12 @@ class BasicActionSpace(BaseActSpace):
             action_tensors: np.ndarray,
             game_state: Environment,
     ) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
-        actions_taken = np.array([0,0])
+        masks = BasicActionSpace.get_available_actions_mask(game_state)
+        valid_actions =
         return actions_taken
 
-    def get_available_actions_mask(self, game_state: Environment) -> Dict[str, np.ndarray]:
+    @staticmethod
+    def get_available_actions_mask(game_state: Environment) -> Dict[str, np.ndarray]:
         mask = np.ma.masked_greater(game_state, 0)
         available_actions_mask = np.ma.mask_cols(mask)
         return available_actions_mask
