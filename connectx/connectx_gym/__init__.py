@@ -1,10 +1,9 @@
 import torch
 from typing import Optional
-from kaggle_environments import make
 
-from . import act_spaces,obs_spaces, reward_spaces
+from . import act_spaces, obs_spaces, reward_spaces
 from .connectx_env import ConnectFour
-from .wrappers import RewardSpaceWrapper, LoggingEnv, KaggleToGymWrapper, VecEnv, PytorchEnv
+from .wrappers import RewardSpaceWrapper, LoggingEnv, VecEnv, PytorchEnv
 
 ACT_SPACES_DICT = {
     key: val for key, val in act_spaces.__dict__.items()
@@ -28,14 +27,14 @@ def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed
         seed = flags.seed
     envs = []
     for i in range(flags.n_actor_envs):
-        env = KaggleToGymWrapper(
+        env = ConnectFour(
             act_space=flags.act_space(),
             obs_space=create_flexible_obs_space(flags, teacher_flags),
-            # seed=seed
+            seed=seed
         )
         reward_space = create_reward_space(flags)
         env = RewardSpaceWrapper(env, reward_space)
-        # env = env.obs_space.wrap_env(env)
+        env = env.obs_space.wrap_env(env)
         # env = LoggingEnv(env, reward_space)
         envs.append(env)
     env = VecEnv(envs)
@@ -50,6 +49,9 @@ def create_reward_space(flags) -> reward_spaces.BaseRewardSpace:
 
 if __name__=="__main__":
     import yaml
-    flags = yaml.safe_load(open("C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2/flags.yaml", 'r'))
-    env = create_env(flags, 'cpu')
-    print(env)
+
+    with open("C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2/flags.yaml", 'r') as flag_file:
+        yaml_flags = yaml.safe_load(flag_file)
+
+    environment = create_env(yaml_flags, 'cpu')
+    print(environment)

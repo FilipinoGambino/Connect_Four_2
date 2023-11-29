@@ -1,5 +1,4 @@
 import gym
-from gym import spaces
 import torch
 import numpy as np
 
@@ -7,43 +6,48 @@ from kaggle_environments.core import Environment, make
 from typing import Dict, List, NoReturn, Optional, Union, Tuple
 
 # from . import ConnectFour
-from .act_spaces import BaseActSpace
-from .obs_spaces import BaseObsSpace
-from .reward_spaces import BaseRewardSpace, GameResultReward
+from act_spaces import BaseActSpace
+from obs_spaces import BaseObsSpace
+from reward_spaces import BaseRewardSpace, GameResultReward
 
 
 class ConnectFour(gym.Env):
     metadata = {'render_modes': ['human']}
     spec = None
 
-    def __init__(self, agent2="random"):
+    def __init__(
+            self,
+            act_space: BaseActSpace,
+            obs_space: BaseObsSpace,
+            seed: Optional[int] = 42,
+    ):
         super(ConnectFour, self).__init__()
         env = make("connectx", debug=True)
-        self.env = env.train([None, agent2])
+        self.env = env.train([None, "negamax"])
+
         self.rows = env.configuration.rows
         self.columns = env.configuration.columns
 
-        self.action_space = spaces.Discrete(self.columns)
-        self.observation_space = spaces.Box(low=0, high=2,
-                                            shape=(1,self.rows,self.columns), dtype=int)
-
+        self.action_space = act_space
+        self.observation_space = obs_space
         self.default_reward_space = GameResultReward()
 
-    def reset(self):
-        self.obs = self.env.reset()
-        return np.array(self.obs['board']).reshape(1, self.rows, self.columns)
-
-    @property
-    def is_columns(self):
-        return self.obs['board'][int(action)] == 0
+    def reset(self, **kwargs):
+        obs = self.env.reset()
+        return np.array(obs['board']).reshape([self.rows, self.columns])
 
     def step(self, action):
-        if self.is_valid(action):
-            obs, reward, done, info = self.env.step(int(action))
-        else:
-            obs, reward, done, _ = -10, True, {}
+        action = self.process_actions(action)
+        obs, reward, done, info = self.env.step(int(action))
 
         return obs, reward, done, info
+
+    def process_actions(self, action: Dict[str, np.ndarray]) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
+        return self.action_space.process_actions(
+            action,
+            self.game_state,
+            self.board_dims,
+        )
 
 # class KaggleToGymWrapper(gym.Env):
 #     def __init__(self, act_space: BaseActSpace, obs_space: BaseObsSpace):

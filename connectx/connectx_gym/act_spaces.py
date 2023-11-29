@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from functools import lru_cache
 import numpy as np
+import numpy.ma as ma
 import gym
 from kaggle_environments.core import Environment
 
 from typing import Dict, List, Optional, Tuple
 from ..utility_constants import BOARD_SIZE
+
+ROWS,COLUMNS = BOARD_SIZE
 
 class BaseActSpace(ABC):
     @abstractmethod
@@ -36,18 +39,17 @@ class BasicActionSpace(BaseActSpace):
         columns = board_dims[1]
         return gym.spaces.Discrete(columns)
 
-    @lru_cache(maxsize=None)
+    # @lru_cache(maxsize=None)
     def process_actions(
             self,
             action_tensors: np.ndarray,
             game_state: Environment,
     ) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
-        masks = BasicActionSpace.get_available_actions_mask(game_state)
-        valid_actions =
-        return actions_taken
+        mask = BasicActionSpace.get_available_actions_mask(game_state)
+        valid_actions = ma.masked_array(action_tensors, mask=mask)
+        return valid_actions
 
     @staticmethod
     def get_available_actions_mask(game_state: Environment) -> Dict[str, np.ndarray]:
-        mask = np.ma.masked_greater(game_state, 0)
-        available_actions_mask = np.ma.mask_cols(mask)
+        available_actions_mask = np.array([x.all(axis=0) for x in game_state]).reshape([1,COLUMNS])
         return available_actions_mask
