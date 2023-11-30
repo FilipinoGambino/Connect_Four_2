@@ -1,42 +1,54 @@
-from kaggle_environments import make, Environment
+from kaggle_environments import make
+from typing import Dict, List, Optional, Tuple
 import gym
+import numpy as np
 
+from .act_spaces import BaseActSpace
+from .obs_spaces import BaseObsSpace
 from .reward_spaces import GameResultReward
 
-class ConnectFour(gym.Env, Environment):
-    metadata = {"render.modes": []}
+from ..utility_constants import BOARD_SIZE
+
+class ConnectFour(gym.Env):
+    metadata = {'render_modes': ['human']}
+    spec = None
 
     def __init__(
             self,
-            act_space,
-            obs_space,
-            seed = None
+            act_space: BaseActSpace,
+            obs_space: BaseObsSpace,
+            seed: Optional[int] = 42,
     ):
         super(ConnectFour, self).__init__()
+        self.env = make("connectx", debug=True)
+        self.trainer = self.env.train([None, "negamax"])
+
+        self.rows = self.env.configuration.rows
+        self.columns = self.env.configuration.columns
+
         self.action_space = act_space
         self.obs_space = obs_space
-        self.reward_space = GameResultReward()
+        self.default_reward_space = GameResultReward()
 
-        self.game = make('connectx')
-        self.seed = seed if seed else 42
+    def reset(self, **kwargs):
+        print('resetting')
+        obs = self.trainer.reset()
+        return np.array(obs['board']).reshape([self.rows, self.columns])
 
     def step(self, action):
-        self.game.step(action)
-        rewards = self.reward_space.compute_rewards(self.game)
+        action = self.process_actions(action)
+        obs, reward, done, info = self.trainer.step(action)
 
-        return (
-            self.game.state,
-            rewards,
-            self.game.done,
-            False,
-            self.game.info
+        return obs, reward, done, info
+
+    def process_actions(self, action: Dict[str, np.ndarray]) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
+        board = self.env.state[0]['observation']['board']
+        obs = np.array(board).reshape(BOARD_SIZE)
+        valid_actions = self.action_space.process_actions(
+            action,
+            obs,
         )
-
-    def reset(self, seed=None, options=None):
-        self.game.reset()
+        return int(np.argmax(valid_actions))
 
     def render(self, **kwargs):
-        print(self.game.render(mode='human'))
-
-    def close(self):
-        pass
+        self.env.render(**kwargs)

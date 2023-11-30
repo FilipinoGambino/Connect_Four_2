@@ -246,4 +246,9 @@ if __name__=='__main__':
 
     flags = flags_to_namespace(yfile)
     env = create_env(flags, 'cpu')
-    print(env.step([torch.Tensor([2,0]), torch.Tensor([2,0])]))
+    done = torch.Tensor([False, False])
+    while not done.any():
+        obs, reward, done, info = env.step(torch.randn(2,7))
+        print(obs['board'])
+
+    env.render()

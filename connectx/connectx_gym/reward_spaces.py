@@ -2,6 +2,7 @@ from typing import NamedTuple, Tuple, Dict
 from abc import ABC, abstractmethod
 import logging
 
+from kaggle_environments.core import Environment
 import numpy as np
 
 class RewardSpec(NamedTuple):
@@ -25,7 +26,7 @@ class BaseRewardSpace(ABC):
         pass
 
     @abstractmethod
-    def compute_rewards_and_done(self, game_state: dict, done: bool) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards(self, game_state: Environment) -> Tuple[Tuple[float, float], bool]:
         pass
 
     def get_info(self) -> Dict[str, np.ndarray]:
@@ -37,11 +38,11 @@ class FullGameRewardSpace(BaseRewardSpace):
     """
     A class used for defining a reward space for the full game.
     """
-    def compute_rewards_and_done(self, game_state: dict, done: bool) -> Tuple[Tuple[float, float], bool]:
-        return self.compute_rewards(game_state, done), done
+    def compute_rewards(self, game_state: Environment) -> Tuple[Tuple[float, float], bool]:
+        pass
 
     @abstractmethod
-    def compute_rewards(self, game_state: dict, done: bool) -> Tuple[float, float]:
+    def _compute_rewards(self, game_state: dict, done: bool) -> Tuple[float, float]:
         pass
 
 
@@ -59,20 +60,14 @@ class GameResultReward(FullGameRewardSpace):
         super(GameResultReward, self).__init__(**kwargs)
         self.early_stop = early_stop
 
-    def compute_rewards_and_done(self, game_state: dict, done: bool) -> Tuple[Tuple[float, float], bool]:
-        # if self.early_stop:
-        #     done = done or should_early_stop(game_state)
-        return self.compute_rewards(game_state, done), done
+    def compute_rewards(self, game_state: Environment) -> Tuple[Tuple[float, float], bool]:
+        if self.early_stop:
+            raise NotImplementedError  # done = done or should_early_stop(game_state)
+        done = game_state.done
+        return self._compute_rewards(game_state, done), done
 
-    def compute_rewards(self, game_state: dict, done: bool) -> Tuple[float, float]:
-        # if not done:
-        #     return 0., 0.
-        rewards = (game_state['player1']['reward'], game_state['player2']['reward'])
+    def _compute_rewards(self, game_state: Environment, done: bool) -> Tuple[float, float]:
+        if not done:
+            return 0., 0.
+        rewards = (game_state.state[0]['reward'], game_state.state[1]['reward'])
         return rewards
-
-    # @staticmethod
-    # def compute_player_reward(player: Player):
-    #     if player.victory:
-    #         return GameResultReward.get_reward_spec().reward_max
-    #     else:
-    #         return GameResultReward.get_reward_spec().reward_min

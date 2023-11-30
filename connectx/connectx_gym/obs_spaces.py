@@ -64,16 +64,16 @@ class _FixedShapeContinuousObsWrapper(gym.Wrapper):
         return self.observation(observation), reward, done, info
 
     def observation(self, observation: np.ndarray) -> Dict[str, np.ndarray]:
-        player1, player2 = observation
-
         rows, cols = BOARD_SIZE
-        board = np.array(player1['observation']['board']).reshape((rows, cols))
+        board = np.array(observation['board']).reshape((rows, cols))
+        p1_mark = observation['mark']
+        p2_mark = (p1_mark + 1) % 2
 
         obs = {
             "board": board,
             "empty_cells": np.where(board == 0, 1, 0),
-            "p1_cells": np.where(board == player1['observation']['mark'], 1, 0),
-            "p2_cells": np.where(board == player2['observation']['mark'], 1, 0),
-            "turn": player1['observation']['step'],
+            "p1_cells": np.where(board == p1_mark, 1, 0),
+            "p2_cells": np.where(board == p2_mark, 1, 0),
+            "turn": observation['step'],
         }
         return obs

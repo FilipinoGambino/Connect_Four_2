@@ -43,7 +43,7 @@ class BasicActionSpace(BaseActSpace):
     def process_actions(
             self,
             action_tensors: np.ndarray,
-            game_state: Environment,
+            game_state: np.ndarray,
     ) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
         mask = BasicActionSpace.get_available_actions_mask(game_state)
         valid_actions = ma.masked_array(action_tensors, mask=mask)
@@ -51,5 +51,5 @@ class BasicActionSpace(BaseActSpace):
 
     @staticmethod
     def get_available_actions_mask(game_state: Environment) -> Dict[str, np.ndarray]:
-        available_actions_mask = np.array([x.all(axis=0) for x in game_state]).reshape([1,COLUMNS])
+        available_actions_mask = np.array(game_state.all(axis=0)).reshape([1,COLUMNS])
         return available_actions_mask

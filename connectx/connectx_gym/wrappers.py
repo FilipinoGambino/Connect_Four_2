@@ -6,104 +6,9 @@ from kaggle_environments.core import Environment, make
 from typing import Dict, List, NoReturn, Optional, Union, Tuple
 
 # from . import ConnectFour
-from act_spaces import BaseActSpace
-from obs_spaces import BaseObsSpace
-from reward_spaces import BaseRewardSpace, GameResultReward
-
-
-class ConnectFour(gym.Env):
-    metadata = {'render_modes': ['human']}
-    spec = None
-
-    def __init__(
-            self,
-            act_space: BaseActSpace,
-            obs_space: BaseObsSpace,
-            seed: Optional[int] = 42,
-    ):
-        super(ConnectFour, self).__init__()
-        env = make("connectx", debug=True)
-        self.env = env.train([None, "negamax"])
-
-        self.rows = env.configuration.rows
-        self.columns = env.configuration.columns
-
-        self.action_space = act_space
-        self.observation_space = obs_space
-        self.default_reward_space = GameResultReward()
-
-    def reset(self, **kwargs):
-        obs = self.env.reset()
-        return np.array(obs['board']).reshape([self.rows, self.columns])
-
-    def step(self, action):
-        action = self.process_actions(action)
-        obs, reward, done, info = self.env.step(int(action))
-
-        return obs, reward, done, info
-
-    def process_actions(self, action: Dict[str, np.ndarray]) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
-        return self.action_space.process_actions(
-            action,
-            self.game_state,
-            self.board_dims,
-        )
-
-# class KaggleToGymWrapper(gym.Env):
-#     def __init__(self, act_space: BaseActSpace, obs_space: BaseObsSpace):
-#         super(KaggleToGymWrapper, self).__init__()
-#         # env = make('connectx')
-#         # for key in dir(env):
-#         #     print(key)
-#             # self.{key} = val
-#
-#         self.action_space = act_space
-#         self.observation_space = obs_space
-#         self.default_reward_space = GameResultReward()
-#
-#         self.obs = None
-#
-#     def observation(self, actions: List[np.ndarray]) -> Dict:
-#         actions = list(actions)
-#         player1, player2 = self.env.step(actions)
-#
-#         rows = self.env.configuration['rows']
-#         cols = self.env.configuration['columns']
-#         board = np.array(player1['observation']['board']).reshape((rows, cols))
-#
-#         obs = {
-#             "boards": {
-#                 "board_base": board,
-#                 "empty_spaces": np.where(board == 0, 1, 0),
-#                 "board_p1_view": np.where(board == player1['observation']['mark'], 1, 0),
-#                 "board_p2_view": np.where(board == player2['observation']['mark'], 1, 0),
-#             },
-#             "turn": player1['observation']['step'],
-#             "player1": {
-#                 "action": player1['action'],
-#                 "reward": player1['reward'],
-#                 "status": player1['status']
-#             },
-#             "player2": {
-#                 "action": player2['action'],
-#                 "reward": player2['reward'],
-#                 "status": player2['status']
-#             }
-#         }
-#         return obs
-#
-#     def step(self, actions: List[int]) -> Tuple[dict, Tuple[float, float], bool, dict]:
-#         self.obs = self.observation(actions)
-#         done = self.env.done
-#         reward = self.default_reward_space.compute_rewards_and_done(self.obs, done)
-#
-#         return self.obs, reward, done, {}
-#
-#     def reset(self, **kwargs):
-#         self.env.reset()
-#
-#     def render(self, mode='human'):
-#         self.env.render(mode=mode)
+from .act_spaces import BaseActSpace
+from .obs_spaces import BaseObsSpace
+from .reward_spaces import BaseRewardSpace, GameResultReward
 
 
 class LoggingEnv(gym.Wrapper):
@@ -137,12 +42,11 @@ class RewardSpaceWrapper(gym.Wrapper):
         self.reward_space = reward_space
 
     def _get_rewards_and_done(self) -> Tuple[Tuple[float, float], bool]:
-        for key,val in self.unwrapped.env.dict().items():
-            print(key, val)
-        rewards, done = self.reward_space.compute_rewards_and_done(self.unwrapped.env, self.done)
-        if self.unwrapped.done and not done:
+        # for key,val in self.unwrapped.env.dict().items():
+        #     print(key, val)
+        rewards, done = self.reward_space.compute_rewards(self.unwrapped.env)
+        if self.unwrapped.env.done and not done:
             raise RuntimeError("Reward space did not return done, but the connectx engine is done.")
-        self.unwrapped.done = done
         return rewards, done
 
     def reset(self, **kwargs):
@@ -191,9 +95,9 @@ class VecEnv(gym.Env):
         self.last_outs = [env.step(a) for env, a in zip(self.envs, actions)]
         return VecEnv._vectorize_env_outs(self.last_outs)
 
-    def render(self, idx: int, mode: str = "human", **kwargs):
+    def render(self, mode: str = "human", **kwargs):
         # noinspection PyArgumentList
-        return self.envs[idx].render(mode, **kwargs)
+        return self.envs[0].render(**kwargs)
 
     def close(self):
         return [env.close() for env in self.envs]
