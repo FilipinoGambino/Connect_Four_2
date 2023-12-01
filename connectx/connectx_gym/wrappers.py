@@ -83,7 +83,7 @@ class VecEnv(gym.Env):
             # noinspection PyArgumentList
             self.last_outs = [env.reset(**kwargs) for env in self.envs]
             return VecEnv._vectorize_env_outs(self.last_outs)
-
+        print(self.last_outs)
         for i, env in enumerate(self.envs):
             # Check if env finished
             if self.last_outs[i][2]:
@@ -115,6 +115,11 @@ class VecEnv(gym.Env):
     @property
     def action_space(self) -> List[gym.spaces.Dict]:
         return [env.action_space for env in self.envs]
+
+    @property
+    def action_space_n(self):
+        action_spaces = self.action_space
+        return [act.n for act in action_spaces]
 
     @property
     def observation_space(self) -> List[gym.spaces.Dict]:

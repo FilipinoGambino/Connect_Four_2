@@ -46,15 +46,14 @@ from connectx.connectx_gym import create_env
 def load_object(dct):
     return SimpleNamespace(**dct)
 
-# with open("C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2/flags.yaml", 'r') as file:
-with open("D:/Nick/Documents/GitHub/Connect_Four_2/flags.yaml", 'r') as file:
+with open("C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2/flags.yaml", 'r') as file:
+# with open("D:/Nick/Documents/GitHub/Connect_Four_2/flags.yaml", 'r') as file:
     yfile = yaml.safe_load(file)
     flags = flags_to_namespace(yfile)
 
 env = create_env(flags, 'cpu')
-done = torch.Tensor([False, False])
+# done = torch.Tensor([False, False])
 
-print(env)
 # Set seed for experiment reproducibility
 seed = 42
 tf.random.set_seed(seed)
@@ -63,16 +62,15 @@ np.random.seed(seed)
 # Small epsilon value for stabilizing division operations
 eps = np.finfo(np.float32).eps.item()
 
-num_actions = env.action_space.n
 num_hidden_units = 128
 
-model = ActorCritic(num_actions, num_hidden_units)
+model = ActorCritic(num_hidden_units)
 
 @tf.numpy_function(Tout=[tf.float32, tf.int32, tf.int32])
-def env_step(action: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def env_step(action_tensors: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Returns state, reward and done flag given an action."""
 
-    state, reward, done, truncated, info = env.step(action)
+    state, reward, done, truncated, info = env.step(action_tensors)
     return (state.astype(np.float32),
             np.array(reward, np.int32),
             np.array(done, np.int32))
@@ -220,18 +218,18 @@ gamma = 0.99
 episodes_reward: collections.deque = collections.deque(maxlen=min_episodes_criterion)
 
 t = tqdm.trange(max_episodes)
+idx = 0
 for i in t:
+    idx = i
     initial_state, info = env.reset()
     initial_state = tf.constant(initial_state, dtype=tf.float32)
-    episode_reward = int(train_step(
-        initial_state, model, optimizer, gamma, max_steps_per_episode))
+    episode_reward = int(train_step(initial_state, model, optimizer, gamma, max_steps_per_episode))
 
     episodes_reward.append(episode_reward)
     running_reward = statistics.mean(episodes_reward)
 
 
-    t.set_postfix(
-        episode_reward=episode_reward, running_reward=running_reward)
+    t.set_postfix(episode_reward=episode_reward, running_reward=running_reward)
 
     # Show the average episode reward every 10 episodes
     if i % 10 == 0:
@@ -240,7 +238,7 @@ for i in t:
     if running_reward > reward_threshold and i >= min_episodes_criterion:
         break
 
-print(f'\nSolved at episode {i}: average reward: {running_reward:.2f}!')
+print(f'\nSolved at episode {idx}: average reward: {running_reward:.2f}!')
 
 # if __name__=='__main__':
     # import yaml
