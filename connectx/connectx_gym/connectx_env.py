@@ -29,26 +29,37 @@ class ConnectFour(gym.Env):
         self.action_space = act_space
         self.obs_space = obs_space
         self.default_reward_space = GameResultReward()
+        self.info = {}
 
     def reset(self, **kwargs):
         print('resetting')
         obs = self.trainer.reset()
-        return np.array(obs['board']).reshape([self.rows, self.columns])
+        obs = np.array(obs['board']).reshape([self.rows, self.columns])
+        self.info = []
+        return obs
 
-    def step(self, action):
-        action = self.process_actions(action)
-        obs, reward, done, info = self.trainer.step(action)
+    def step(self, logits):
+        action = self.process_actions(logits)
+        obs, reward, done, _ = self.trainer.step(action)
 
-        return obs, reward, done, info
+        return obs, reward, done, self.info
 
-    def process_actions(self, action: Dict[str, np.ndarray]) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
+    def process_actions(self, logits: np.ndarray) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
+        step = self.env.state[0]['step']
         board = self.env.state[0]['observation']['board']
         obs = np.array(board).reshape(BOARD_SIZE)
         valid_actions = self.action_space.process_actions(
-            action,
+            logits,
             obs,
         )
-        return int(np.argmax(valid_actions))
+        actions = int(np.argmax(valid_actions))
+
+        self.info[step].append(dict(
+            logits=logits,
+            masked_actions=valid_actions,
+            actions=actions
+        ))
+        return actions
 
     def render(self, **kwargs):
         self.env.render(**kwargs)

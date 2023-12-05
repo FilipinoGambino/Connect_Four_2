@@ -42,11 +42,11 @@ class BasicActionSpace(BaseActSpace):
     # @lru_cache(maxsize=None)
     def process_actions(
             self,
-            action_tensors: np.ndarray,
+            action_logits: np.ndarray,
             game_state: np.ndarray,
     ) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
         mask = BasicActionSpace.get_available_actions_mask(game_state)
-        valid_actions = ma.masked_array(action_tensors, mask=mask)
+        valid_actions = ma.masked_array(action_logits, mask=mask)
         return valid_actions
 
     @staticmethod

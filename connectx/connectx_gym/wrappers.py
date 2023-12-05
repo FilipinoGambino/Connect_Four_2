@@ -20,6 +20,7 @@ class LoggingEnv(gym.Wrapper):
         self.actions_distributions = {}
 
     def info(self, info: Dict[str, np.ndarray], rewards: List[int]) -> Dict[str, np.ndarray]:
+        info[-1]["rewards"] = rewards
         return info
 
     def reset(self, **kwargs):
@@ -78,13 +79,15 @@ class VecEnv(gym.Env):
         info_stacked = VecEnv._stack_dict(info_list)
         return obs_stacked, reward_stacked, done_stacked, info_stacked
 
-    def reset(self, force: bool = False, **kwargs):
+    def reset(self, force: bool = True, **kwargs):
         if force:
             # noinspection PyArgumentList
             self.last_outs = [env.reset(**kwargs) for env in self.envs]
+            print(self.last_outs)
             return VecEnv._vectorize_env_outs(self.last_outs)
-        print(self.last_outs)
         for i, env in enumerate(self.envs):
+            print(f"{i}", end=' ')
+            print(self.last_outs[i])
             # Check if env finished
             if self.last_outs[i][2]:
                 # noinspection PyArgumentList
