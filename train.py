@@ -67,13 +67,14 @@ num_hidden_units = 128
 model = ActorCritic(num_hidden_units)
 
 @tf.numpy_function(Tout=[tf.float32, tf.int32, tf.int32])
-def env_step(action_tensors: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Returns state, reward and done flag given an action."""
+def env_step(action_tensors: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+    """Returns state, reward, done, info flag given an action."""
 
-    state, reward, done, truncated, info = env.step(action_tensors)
+    state, reward, done, info = env.step(action_tensors)
     return (state.astype(np.float32),
             np.array(reward, np.int32),
-            np.array(done, np.int32))
+            np.array(done, np.int32),
+            info)
 
 def run_episode(
         initial_state: tf.Tensor,
@@ -96,21 +97,27 @@ def run_episode(
         action_logits_t, value = model(state)
 
         # Sample next action from the action probability distribution
-        action = tf.random.categorical(action_logits_t, 1)[0, 0]
-        action_probs_t = tf.nn.softmax(action_logits_t)
+        # action = tf.random.categorical(action_logits_t, 1)[0, 0]
+        # action_probs_t = tf.nn.softmax(action_logits_t)
 
         # Store critic values
         values = values.write(t, tf.squeeze(value))
 
         # Store log probability of the action chosen
-        action_probs = action_probs.write(t, action_probs_t[0, action])
+        # action_probs = action_probs.write(t, action_probs_t[0, action])
 
         # Apply action to the environment to get next state and reward
-        state, reward, done = env_step(action)
+        state, reward, done, info = env_step(action_logits_t)
         state.set_shape(initial_state_shape)
 
         # Store reward
         rewards = rewards.write(t, reward)
+
+        # Store log probability of the action chosen
+        action = info['action']
+        action_probs_t = info['masked_logits']
+        action_prob = action_probs_t[0, action]
+        action_probs = action_probs.write(t, action_prob)
 
         if tf.cast(done, tf.bool):
             break
@@ -221,8 +228,8 @@ t = tqdm.trange(max_episodes)
 idx = 0
 for i in t:
     idx = i
-    initial_state, info = env.reset()
-    initial_state = tf.constant(initial_state, dtype=tf.float32)
+    initial_state, reward, done, info = env.reset()
+    # initial_state = tf.constant(initial_state, dtype=tf.float32)
     episode_reward = int(train_step(initial_state, model, optimizer, gamma, max_steps_per_episode))
 
     episodes_reward.append(episode_reward)

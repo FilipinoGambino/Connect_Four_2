@@ -24,13 +24,13 @@ class LoggingEnv(gym.Wrapper):
         return info
 
     def reset(self, **kwargs):
-        obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
+        obs, info = super(LoggingEnv, self).reset(**kwargs)
         # self._reset_peak_vals()
         self.reward_sums = [0., 0.]
         self.actions_distributions = {
             key: 0. for key in self.actions_distributions.keys()
         }
-        return obs, reward, done, self.info(info, reward)
+        return obs, self.info(info, self.reward_sums)
 
     def step(self, action: Dict[str, np.ndarray]):
         obs, reward, done, info = super(LoggingEnv, self).step(action)
@@ -51,7 +51,7 @@ class RewardSpaceWrapper(gym.Wrapper):
         return rewards, done
 
     def reset(self, **kwargs):
-        obs, _, _, info = super(RewardSpaceWrapper, self).reset(**kwargs)
+        obs, info = super(RewardSpaceWrapper, self).reset(**kwargs)
         return obs, *self._get_rewards_and_done(), info
 
     def step(self, action):
@@ -72,18 +72,25 @@ class VecEnv(gym.Env):
 
     @staticmethod
     def _vectorize_env_outs(env_outs: List[Tuple]) -> Tuple:
-        obs_list, reward_list, done_list, info_list = zip(*env_outs)
-        obs_stacked = VecEnv._stack_dict(obs_list)
-        reward_stacked = np.array(reward_list)
-        done_stacked = np.array(done_list)
-        info_stacked = VecEnv._stack_dict(info_list)
-        return obs_stacked, reward_stacked, done_stacked, info_stacked
+        print(env_outs[0])
+        if len(env_outs[0]) < 4:
+            obs_list, info_list = zip(*env_outs)
+            obs_stacked = VecEnv._stack_dict(obs_list)
+            info_stacked = VecEnv._stack_dict(info_list)
+            return obs_stacked, info_stacked
+        else:
+            obs_list, reward_list, done_list, info_list = zip(*env_outs)
+            obs_stacked = VecEnv._stack_dict(obs_list)
+            reward_stacked = np.array(reward_list)
+            done_stacked = np.array(done_list)
+            info_stacked = VecEnv._stack_dict(info_list)
+            return obs_stacked, reward_stacked, done_stacked, info_stacked
+
 
     def reset(self, force: bool = True, **kwargs):
         if force:
             # noinspection PyArgumentList
             self.last_outs = [env.reset(**kwargs) for env in self.envs]
-            print(self.last_outs)
             return VecEnv._vectorize_env_outs(self.last_outs)
         for i, env in enumerate(self.envs):
             print(f"{i}", end=' ')
@@ -138,7 +145,7 @@ class PytorchEnv(gym.Wrapper):
         super(PytorchEnv, self).__init__(env)
         self.device = device
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs) -> Tuple[Dict, List, bool, List]:
         return tuple([self._to_tensor(out) for out in super(PytorchEnv, self).reset(**kwargs)])
 
     def step(self, actions: List[torch.Tensor]):
@@ -152,3 +159,21 @@ class PytorchEnv(gym.Wrapper):
             return {key: self._to_tensor(val) for key, val in x.items()}
         else:
             return torch.from_numpy(x).to(self.device, non_blocking=True)
+
+
+class DictEnv(gym.Wrapper):
+    @staticmethod
+    def _dict_env_out(env_out: tuple) -> dict:
+        obs, reward, done, info = env_out
+        return dict(
+            obs=obs,
+            reward=reward,
+            done=done,
+            info=info
+        )
+
+    def reset(self, **kwargs):
+        return DictEnv._dict_env_out(super(DictEnv, self).reset(**kwargs))
+
+    def step(self, action):
+        return DictEnv._dict_env_out(super(DictEnv, self).step(action))

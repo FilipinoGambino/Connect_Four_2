@@ -63,7 +63,7 @@ class _FixedShapeContinuousObsWrapper(gym.Wrapper):
         observation, reward, done, info = self.env.step(action)
         return self.observation(observation), reward, done, info
 
-    def observation(self, observation: np.ndarray) -> Dict[str, np.ndarray]:
+    def observation(self, observation: Dict) -> Dict[str, np.ndarray]:
         rows, cols = BOARD_SIZE
         board = np.array(observation['board']).reshape((rows, cols))
         p1_mark = observation['mark']

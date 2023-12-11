@@ -3,7 +3,7 @@ from typing import Optional
 
 from . import act_spaces, obs_spaces, reward_spaces
 from .connectx_env import ConnectFour
-from .wrappers import RewardSpaceWrapper, LoggingEnv, VecEnv, PytorchEnv
+from .wrappers import DictEnv, LoggingEnv, PytorchEnv, RewardSpaceWrapper, VecEnv
 
 ACT_SPACES_DICT = {
     key: val for key, val in act_spaces.__dict__.items()
@@ -35,14 +35,11 @@ def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed
         reward_space = create_reward_space(flags)
         env = RewardSpaceWrapper(env, reward_space)
         env = env.obs_space.wrap_env(env)
-        # print("observation wrapper", env)
-        # for key in dir(env):
-        #     print(key)
         # env = LoggingEnv(env, reward_space)
         envs.append(env)
     env = VecEnv(envs)
     env = PytorchEnv(env, device)
-    # env = DictEnv(env)
+    env = DictEnv(env)
     return env
 
 
