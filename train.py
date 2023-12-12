@@ -66,11 +66,12 @@ num_hidden_units = 128
 
 model = ActorCritic(num_hidden_units)
 
-@tf.numpy_function(Tout=[tf.float32, tf.int32, tf.int32])
+@tf.numpy_function(Tout=[tf.float32, tf.int32, tf.int32, dict])
 def env_step(action_tensors: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
     """Returns state, reward, done, info flag given an action."""
 
     state, reward, done, info = env.step(action_tensors)
+    print(f"\nstate:\n{state}")
     return (state.astype(np.float32),
             np.array(reward, np.int32),
             np.array(done, np.int32),
@@ -86,16 +87,17 @@ def run_episode(
     values = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     rewards = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
 
-    initial_state_shape = initial_state.shape
+    # initial_state_shape = initial_state.shape
+    # print(f"\nrun_episode initial state:\n{initial_state}")
     state = initial_state
 
     for t in tf.range(max_steps):
         # Convert state into a batched tensor (batch size = 1)
-        state = tf.expand_dims(state, 0)
+        # state = tf.expand_dims(state, 0)
 
         # Run the model and to get action probabilities and critic value
         action_logits_t, value = model(state)
-
+        # print(f"model outputs:\n{action_logits_t}\n{value}")
         # Sample next action from the action probability distribution
         # action = tf.random.categorical(action_logits_t, 1)[0, 0]
         # action_probs_t = tf.nn.softmax(action_logits_t)
@@ -108,7 +110,7 @@ def run_episode(
 
         # Apply action to the environment to get next state and reward
         state, reward, done, info = env_step(action_logits_t)
-        state.set_shape(initial_state_shape)
+        # state.set_shape(initial_state_shape)
 
         # Store reward
         rewards = rewards.write(t, reward)
@@ -185,7 +187,7 @@ def train_step(
     """Runs a model training step."""
 
     with tf.GradientTape() as tape:
-
+        # print(f"\ntrain_step initial_state:\n{initial_state}")
         # Run the model for one episode to collect training data
         action_probs, values, rewards = run_episode(initial_state, model, max_steps_per_episode)
 
@@ -209,13 +211,22 @@ def train_step(
 
     return episode_reward
 
+def reshape(obs):
+    stacked_obs = tf.constant([], dtype=tf.float32)
+    if isinstance(obs, dict):
+        for layer in obs.values():
+            stacked_obs = tf.concat([stacked_obs, tf.reshape(layer, -1)], -1)
+        return tf.expand_dims(stacked_obs, 0)
+    else:
+        print(f"Type {type(obs)} not implemented.")
+        raise NotImplementedError
+
 min_episodes_criterion = 100
 max_episodes = 10000
 max_steps_per_episode = 500
 
-# `CartPole-v1` is considered solved if average reward is >= 475 over 500
 # consecutive trials
-reward_threshold = 475
+reward_threshold = 1
 running_reward = 0
 
 # The discount factor for future rewards
@@ -228,13 +239,14 @@ t = tqdm.trange(max_episodes)
 idx = 0
 for i in t:
     idx = i
-    initial_state, reward, done, info = env.reset()
+    initial_state, reward, done, info = env.reset().values()
+    initial_state = reshape(initial_state)
     # initial_state = tf.constant(initial_state, dtype=tf.float32)
+    print(f"\nouter loop initial_state:\n{initial_state}")
     episode_reward = int(train_step(initial_state, model, optimizer, gamma, max_steps_per_episode))
 
     episodes_reward.append(episode_reward)
     running_reward = statistics.mean(episodes_reward)
-
 
     t.set_postfix(episode_reward=episode_reward, running_reward=running_reward)
 

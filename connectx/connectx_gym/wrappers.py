@@ -1,6 +1,7 @@
 import gym
 import torch
 import numpy as np
+import tensorflow as tf
 
 from kaggle_environments.core import Environment, make
 from typing import Dict, List, NoReturn, Optional, Union, Tuple
@@ -72,7 +73,6 @@ class VecEnv(gym.Env):
 
     @staticmethod
     def _vectorize_env_outs(env_outs: List[Tuple]) -> Tuple:
-        print(env_outs[0])
         if len(env_outs[0]) < 4:
             obs_list, info_list = zip(*env_outs)
             obs_stacked = VecEnv._stack_dict(obs_list)
@@ -159,6 +159,26 @@ class PytorchEnv(gym.Wrapper):
             return {key: self._to_tensor(val) for key, val in x.items()}
         else:
             return torch.from_numpy(x).to(self.device, non_blocking=True)
+
+class TensorflowEnv(gym.Wrapper):
+    def __init__(self, env: Union[gym.Env, VecEnv], device: torch.device = torch.device("cpu")):
+        super(TensorflowEnv, self).__init__(env)
+        self.device = device
+
+    def reset(self, **kwargs) -> Tuple[Dict, List, bool, List]:
+        return tuple([self._to_tensor(out) for out in super(TensorflowEnv, self).reset(**kwargs)])
+
+    def step(self, actions: List[torch.Tensor]):
+        action = [
+            act.cpu().numpy() for act in actions
+        ]
+        return tuple([self._to_tensor(out) for out in super(TensorflowEnv, self).step(action)])
+
+    def _to_tensor(self, x: Union[Dict, np.ndarray]) -> Dict[str, Union[Dict, torch.Tensor]]:
+        if isinstance(x, dict):
+            return {key: self._to_tensor(val) for key, val in x.items()}
+        else:
+            return tf.convert_to_tensor(x, dtype=tf.float32)
 
 
 class DictEnv(gym.Wrapper):
