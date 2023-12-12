@@ -56,7 +56,7 @@ env = create_env(flags, 'cpu')
 
 # Set seed for experiment reproducibility
 seed = 42
-tf.random.set_seed(seed)
+torch.manual_seed(seed)
 np.random.seed(seed)
 
 # Small epsilon value for stabilizing division operations
@@ -66,21 +66,20 @@ num_hidden_units = 128
 
 model = ActorCritic(num_hidden_units)
 
-@tf.numpy_function(Tout=[tf.float32, tf.int32, tf.int32, dict])
-def env_step(action_tensors: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
-    """Returns state, reward, done, info flag given an action."""
-
-    state, reward, done, info = env.step(action_tensors)
-    print(f"\nstate:\n{state}")
-    return (state.astype(np.float32),
-            np.array(reward, np.int32),
-            np.array(done, np.int32),
-            info)
+# def env_step(action_tensors: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+#     """Returns state, reward, done, info flag given an action."""
+#
+#     state, reward, done, info = env.step(action_tensors)
+#     print(f"\nstate:\n{state}")
+#     return (state.astype(np.float32),
+#             np.array(reward, np.int32),
+#             np.array(done, np.int32),
+#             info)
 
 def run_episode(
-        initial_state: tf.Tensor,
-        model: tf.keras.Model,
-        max_steps: int) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        initial_state: torch.Tensor,
+        model: torch.nn.Module,
+        max_steps: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Runs a single episode to collect training data."""
 
     action_probs = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
@@ -91,38 +90,35 @@ def run_episode(
     # print(f"\nrun_episode initial state:\n{initial_state}")
     state = initial_state
 
-    for t in tf.range(max_steps):
+    for step in range(max_steps):
         # Convert state into a batched tensor (batch size = 1)
         # state = tf.expand_dims(state, 0)
 
         # Run the model and to get action probabilities and critic value
-        action_logits_t, value = model(state)
+        action_logits_step, value = model(state)
         # print(f"model outputs:\n{action_logits_t}\n{value}")
         # Sample next action from the action probability distribution
         # action = tf.random.categorical(action_logits_t, 1)[0, 0]
         # action_probs_t = tf.nn.softmax(action_logits_t)
 
         # Store critic values
-        values = values.write(t, tf.squeeze(value))
+        values = values.write(step, tf.squeeze(value))
 
         # Store log probability of the action chosen
         # action_probs = action_probs.write(t, action_probs_t[0, action])
 
         # Apply action to the environment to get next state and reward
-        state, reward, done, info = env_step(action_logits_t)
+        state, reward, done, info = env.step(action_logits_step)
         # state.set_shape(initial_state_shape)
 
         # Store reward
-        rewards = rewards.write(t, reward)
+        rewards = rewards.write(step, reward)
 
         # Store log probability of the action chosen
         action = info['action']
-        action_probs_t = info['masked_logits']
-        action_prob = action_probs_t[0, action]
-        action_probs = action_probs.write(t, action_prob)
-
-        if tf.cast(done, tf.bool):
-            break
+        action_probs_step = info['masked_logits']
+        action_prob = action_probs_step[0, action]
+        action_probs = action_probs.write(step, action_prob)
 
     action_probs = action_probs.stack()
     values = values.stack()
@@ -160,63 +156,71 @@ def get_expected_return(
 huber_loss = tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.SUM)
 
 def compute_loss(
-        action_probs: tf.Tensor,
-        values: tf.Tensor,
-        returns: tf.Tensor) -> tf.Tensor:
+        action_probs: torch.Tensor,
+        values: torch.Tensor,
+        returns: torch.Tensor) -> tf.Tensor:
     """Computes the combined Actor-Critic loss."""
 
     advantage = returns - values
 
-    action_log_probs = tf.math.log(action_probs)
-    actor_loss = -tf.math.reduce_sum(action_log_probs * advantage)
+    action_log_probs = torch.math.log(action_probs)
+    actor_loss = -torch.sum(action_log_probs * advantage)
 
     critic_loss = huber_loss(values, returns)
 
     return actor_loss + critic_loss
 
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+optimizer = torch.optim.Adam(model.parameters())
 
 
-@tf.function
 def train_step(
-        initial_state: tf.Tensor,
-        model: tf.keras.Model,
-        optimizer: tf.keras.optimizers.Optimizer,
+        initial_state: torch.Tensor,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
         gamma: float,
-        max_steps_per_episode: int) -> tf.Tensor:
+        max_steps_per_episode: int,
+) -> torch.Tensor:
     """Runs a model training step."""
 
-    with tf.GradientTape() as tape:
-        # print(f"\ntrain_step initial_state:\n{initial_state}")
-        # Run the model for one episode to collect training data
-        action_probs, values, rewards = run_episode(initial_state, model, max_steps_per_episode)
+    # print(f"\ntrain_step initial_state:\n{initial_state}")
+    # Run the model for one episode to collect training data
+    action_probs, values, rewards = run_episode(initial_state, model, max_steps_per_episode)
 
-        # Calculate the expected returns
-        returns = get_expected_return(rewards, gamma)
+    # Calculate the expected returns
+    returns = get_expected_return(rewards, gamma)
 
-        # Convert training data to appropriate TF tensor shapes
-        action_probs, values, returns = [
-            tf.expand_dims(x, 1) for x in [action_probs, values, returns]]
+    # Convert training data to appropriate TF tensor shapes
+    # action_probs, values, returns = [tf.expand_dims(x, 1) for x in [action_probs, values, returns]]
 
-        # Calculate the loss values to update our network
-        loss = compute_loss(action_probs, values, returns)
+    # Calculate the loss values to update our network
+    loss = compute_loss(action_probs, values, returns)
 
-    # Compute the gradients from the loss
-    grads = tape.gradient(loss, model.trainable_variables)
+    # compute gradients (grad)
+    loss.backward()
+    '''
+    https://stackoverflow.com/questions/64856195/what-is-tape-based-autograd-in-pytorch
+    with torch.no_grad():
+        weights -= weights.grad * learning_rate
+        biases -= biases.grad * learning_rate
+        weights.grad.zero_()
+        biases.grad.zero_()
+    '''
+    optimizer.zero_grad()
 
     # Apply the gradients to the model's parameters
-    optimizer.apply_gradients(zip(grads, model.trainable_variables))
+    optimizer.step()
+    optimizer.zero_grad()
 
-    episode_reward = tf.math.reduce_sum(rewards)
+    episode_reward = torch.sum(rewards)
 
     return episode_reward
 
 def reshape(obs):
-    stacked_obs = tf.constant([], dtype=tf.float32)
+    stacked_obs = []
     if isinstance(obs, dict):
         for layer in obs.values():
-            stacked_obs = tf.concat([stacked_obs, tf.reshape(layer, -1)], -1)
-        return tf.expand_dims(stacked_obs, 0)
+            stacked_obs += layer.flatten()
+        return torch.stack(stacked_obs, 0)
     else:
         print(f"Type {type(obs)} not implemented.")
         raise NotImplementedError
@@ -224,6 +228,7 @@ def reshape(obs):
 min_episodes_criterion = 100
 max_episodes = 10000
 max_steps_per_episode = 500
+learning_rate = 0.001
 
 # consecutive trials
 reward_threshold = 1

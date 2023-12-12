@@ -65,7 +65,7 @@ class _FixedShapeContinuousObsWrapper(gym.Wrapper):
 
     def observation(self, observation: Dict) -> Dict[str, np.ndarray]:
         rows, cols = BOARD_SIZE
-        board = np.array(observation['board']).reshape((rows, cols))
+        board = np.array(observation['board'],dtype=np.float32).reshape((rows, cols))
         p1_mark = observation['mark']
         p2_mark = (p1_mark + 1) % 2
 

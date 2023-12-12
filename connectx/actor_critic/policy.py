@@ -1,6 +1,5 @@
-import tensorflow as tf
 import torch
-from keras import layers
+from torch.nn import LeakyReLU, Linear, Sequential
 
 from typing import Tuple
 
@@ -8,18 +7,18 @@ from ..utility_constants import BOARD_SIZE
 
 NUM_ACTIONS = BOARD_SIZE[1]
 
-class ActorCritic(tf.keras.Model):
+class ActorCritic(torch.nn.Module):
     """Combined actor-critic network"""
-    def __init__(
-            self,
-            num_hidden_units: int):
-        """Initialize."""
+    def __init__(self, num_hidden_units: int):
         super().__init__()
 
-        self.common = layers.Dense(num_hidden_units, activation=layers.LeakyReLU(alpha=0.3))
-        self.actor = layers.Dense(NUM_ACTIONS)
-        self.critic = layers.Dense(1)
+        self.common = Sequential(
+            Linear(388, num_hidden_units),
+            LeakyReLU(),
+        )
+        self.actor = Linear(num_hidden_units, NUM_ACTIONS)
+        self.critic = Linear(num_hidden_units, 1)
 
-    def call(self, inputs: tf.Tensor, **kwargs) -> Tuple[tf.Tensor, tf.Tensor]:
+    def forward(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         x = self.common(inputs)
         return self.actor(x), self.critic(x)
