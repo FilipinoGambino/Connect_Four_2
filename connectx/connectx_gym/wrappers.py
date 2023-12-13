@@ -102,6 +102,7 @@ class VecEnv(gym.Env):
         return VecEnv._vectorize_env_outs(self.last_outs)
 
     def step(self, actions: List[int]):
+        print(f"vec actions:\n{actions}")
         self.last_outs = [env.step(a) for env, a in zip(self.envs, actions)]
         return VecEnv._vectorize_env_outs(self.last_outs)
 
@@ -150,7 +151,7 @@ class PytorchEnv(gym.Wrapper):
 
     def step(self, actions: List[torch.Tensor]):
         action = [
-            act.cpu().numpy() for act in actions
+            act.detach().cpu().numpy() for act in actions
         ]
         return tuple([self._to_tensor(out) for out in super(PytorchEnv, self).step(action)])
 

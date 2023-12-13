@@ -46,13 +46,3 @@ def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed
 
 def create_reward_space(flags) -> reward_spaces.BaseRewardSpace:
     return flags.reward_space(**flags.reward_space_kwargs)
-
-
-if __name__=="__main__":
-    import yaml
-
-    with open("C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2/flags.yaml", 'r') as flag_file:
-        yaml_flags = yaml.safe_load(flag_file)
-
-    environment = create_env(yaml_flags, 'cpu')
-    print(environment)

@@ -36,7 +36,7 @@ class FixedShapeContinuousObs(BaseObsSpace, ABC):
             "empties": gym.spaces.MultiBinary(x * y),
             "p1_cells": gym.spaces.MultiBinary(x * y),
             "p2_cells": gym.spaces.MultiBinary(x * y),
-            "turn": gym.spaces.Box(low=0, high=1),
+            "turn": gym.spaces.Box(low=0, high=1, shape=(1,1)),
         })
 
     def wrap_env(self, env) -> gym.Wrapper:

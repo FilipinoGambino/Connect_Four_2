@@ -9,11 +9,12 @@ NUM_ACTIONS = BOARD_SIZE[1]
 
 class ActorCritic(torch.nn.Module):
     """Combined actor-critic network"""
-    def __init__(self, num_hidden_units: int):
+    def __init__(self):
         super().__init__()
 
+        num_hidden_units = 128
         self.common = Sequential(
-            Linear(388, num_hidden_units),
+            Linear(338, num_hidden_units),
             LeakyReLU(),
         )
         self.actor = Linear(num_hidden_units, NUM_ACTIONS)
@@ -21,4 +22,12 @@ class ActorCritic(torch.nn.Module):
 
     def forward(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         x = self.common(inputs)
-        return self.actor(x), self.critic(x)
+        actor_logits = self.actor(x)
+        actor_actions = ActorCritic.logits_to_actions(actor_logits)
+        critic_value = self.critic(x)
+        return actor_logits, actor_actions, critic_value
+
+    @staticmethod
+    @torch.no_grad()
+    def logits_to_actions(logits: torch.Tensor) -> torch.Tensor:
+        return logits.argmax(dim=0)

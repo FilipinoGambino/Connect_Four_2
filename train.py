@@ -48,8 +48,7 @@ def load_object(dct):
 
 with open("C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2/flags.yaml", 'r') as file:
 # with open("D:/Nick/Documents/GitHub/Connect_Four_2/flags.yaml", 'r') as file:
-    yfile = yaml.safe_load(file)
-    flags = flags_to_namespace(yfile)
+    flags = flags_to_namespace(yaml.safe_load(file))
 
 env = create_env(flags, 'cpu')
 # done = torch.Tensor([False, False])
@@ -62,9 +61,7 @@ np.random.seed(seed)
 # Small epsilon value for stabilizing division operations
 eps = np.finfo(np.float32).eps.item()
 
-num_hidden_units = 128
-
-model = ActorCritic(num_hidden_units)
+model = ActorCritic()
 
 # def env_step(action_tensors: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
 #     """Returns state, reward, done, info flag given an action."""
@@ -82,9 +79,9 @@ def run_episode(
         max_steps: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Runs a single episode to collect training data."""
 
-    action_probs = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
-    values = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
-    rewards = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
+    action_probs = []
+    values = []
+    rewards = []
 
     # initial_state_shape = initial_state.shape
     # print(f"\nrun_episode initial state:\n{initial_state}")
@@ -95,34 +92,36 @@ def run_episode(
         # state = tf.expand_dims(state, 0)
 
         # Run the model and to get action probabilities and critic value
-        action_logits_step, value = model(state)
+        action_logits, actions, value = model(state)
         # print(f"model outputs:\n{action_logits_t}\n{value}")
         # Sample next action from the action probability distribution
         # action = tf.random.categorical(action_logits_t, 1)[0, 0]
         # action_probs_t = tf.nn.softmax(action_logits_t)
 
         # Store critic values
-        values = values.write(step, tf.squeeze(value))
+        print(f"\nvalue:\n{value}")
+        print(f"\naction logits step:\n{action_logits}")
+        values.append(value)
 
         # Store log probability of the action chosen
         # action_probs = action_probs.write(t, action_probs_t[0, action])
 
         # Apply action to the environment to get next state and reward
-        state, reward, done, info = env.step(action_logits_step)
+        state, reward, done, info = env.step(actions)
         # state.set_shape(initial_state_shape)
 
         # Store reward
-        rewards = rewards.write(step, reward)
+        rewards.append(reward)
 
         # Store log probability of the action chosen
         action = info['action']
         action_probs_step = info['masked_logits']
         action_prob = action_probs_step[0, action]
-        action_probs = action_probs.write(step, action_prob)
+        action_probs.append(action_prob)
 
-    action_probs = action_probs.stack()
-    values = values.stack()
-    rewards = rewards.stack()
+    action_probs = torch.stack(action_probs)
+    values = torch.stack(values)
+    rewards = torch.stack(rewards)
 
     return action_probs, values, rewards
 
@@ -239,30 +238,30 @@ gamma = 0.99
 
 # Keep the last episodes reward
 episodes_reward: collections.deque = collections.deque(maxlen=min_episodes_criterion)
-
-t = tqdm.trange(max_episodes)
-idx = 0
-for i in t:
-    idx = i
-    initial_state, reward, done, info = env.reset().values()
-    initial_state = reshape(initial_state)
-    # initial_state = tf.constant(initial_state, dtype=tf.float32)
-    print(f"\nouter loop initial_state:\n{initial_state}")
-    episode_reward = int(train_step(initial_state, model, optimizer, gamma, max_steps_per_episode))
-
-    episodes_reward.append(episode_reward)
-    running_reward = statistics.mean(episodes_reward)
-
-    t.set_postfix(episode_reward=episode_reward, running_reward=running_reward)
-
-    # Show the average episode reward every 10 episodes
-    if i % 10 == 0:
-      pass # print(f'Episode {i}: average reward: {avg_reward}')
-
-    if running_reward > reward_threshold and i >= min_episodes_criterion:
-        break
-
-print(f'\nSolved at episode {idx}: average reward: {running_reward:.2f}!')
+print(__file__)
+# t = tqdm.trange(max_episodes)
+# idx = 0
+# for i in t:
+#     idx = i
+#     initial_state, reward, done, info = env.reset().values()
+#     initial_state = reshape(initial_state)
+#     # initial_state = tf.constant(initial_state, dtype=tf.float32)
+#     # print(f"\nouter loop initial_state:\n{initial_state}")
+#     episode_reward = int(train_step(initial_state, model, optimizer, gamma, max_steps_per_episode))
+#
+#     episodes_reward.append(episode_reward)
+#     running_reward = statistics.mean(episodes_reward)
+#
+#     t.set_postfix(episode_reward=episode_reward, running_reward=running_reward)
+#
+#     # Show the average episode reward every 10 episodes
+#     if i % 10 == 0:
+#       pass # print(f'Episode {i}: average reward: {avg_reward}')
+#
+#     if running_reward > reward_threshold and i >= min_episodes_criterion:
+#         break
+#
+# print(f'\nSolved at episode {idx}: average reward: {running_reward:.2f}!')
 
 # if __name__=='__main__':
     # import yaml

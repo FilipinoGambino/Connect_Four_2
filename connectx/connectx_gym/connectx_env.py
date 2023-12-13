@@ -18,11 +18,14 @@ class ConnectFour(gym.Env):
             self,
             act_space: BaseActSpace,
             obs_space: BaseObsSpace,
+            player_id: int,
             seed: Optional[int] = 42,
     ):
         super(ConnectFour, self).__init__()
         self.env = make("connectx", debug=True)
-        self.trainer = self.env.train([None, "negamax"])
+        players = ["negamax", "negamax"]
+        players[player_id-1] = None
+        self.trainer = self.env.train(players)
 
         self.rows = self.env.configuration.rows
         self.columns = self.env.configuration.columns
@@ -43,13 +46,16 @@ class ConnectFour(gym.Env):
         return obs, reward, done, self.info
 
     def process_actions(self, logits: np.ndarray) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
-        step = self.env.state[0]['step']
+        # print(f"\nstate:\n{self.env.state}")
+        step = self.env.state[0]['observation']['step']
         board = self.env.state[0]['observation']['board']
         obs = np.array(board).reshape(BOARD_SIZE)
+        print(f"\naction logits:\n{logits}")
         valid_action_logits = self.action_space.process_actions(
             logits,
             obs,
         )
+        print(f"\nvalid actions:\n{valid_action_logits}")
         valid_action_probs = softmax(valid_action_logits)
         action = np.random.choice(BOARD_SIZE[1], p=valid_action_probs)
 
