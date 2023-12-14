@@ -46,8 +46,7 @@ from connectx.connectx_gym import create_env
 def load_object(dct):
     return SimpleNamespace(**dct)
 
-with open("C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2/flags.yaml", 'r') as file:
-# with open("D:/Nick/Documents/GitHub/Connect_Four_2/flags.yaml", 'r') as file:
+with open("/env_config.yaml", 'r') as file:
     flags = flags_to_namespace(yaml.safe_load(file))
 
 env = create_env(flags, 'cpu')

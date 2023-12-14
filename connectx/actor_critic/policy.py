@@ -9,12 +9,12 @@ NUM_ACTIONS = BOARD_SIZE[1]
 
 class ActorCritic(torch.nn.Module):
     """Combined actor-critic network"""
-    def __init__(self):
+    def __init__(self, num_input_units):
         super().__init__()
 
         num_hidden_units = 128
         self.common = Sequential(
-            Linear(338, num_hidden_units),
+            Linear(num_input_units, num_hidden_units),
             LeakyReLU(),
         )
         self.actor = Linear(num_hidden_units, NUM_ACTIONS)
