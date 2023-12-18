@@ -35,10 +35,12 @@ class RLAgent:
 
         self.env = create_env(self.env_flags, self.device)
         obs = self.env.unwrapped[0].obs_space.get_obs_spec().sample()
+
         num_inputs = 0
         for key in obs:
             num_inputs += obs[key].shape[0]
         num_inputs *= self.env_flags.n_actor_envs
+
         self.model = ActorCritic(num_inputs)
 
     def __call__(self, *args, **kwargs):
@@ -57,3 +59,4 @@ class RLAgent:
 
 if __name__=="__main__":
     agent = RLAgent(1)
+    print(agent.model)

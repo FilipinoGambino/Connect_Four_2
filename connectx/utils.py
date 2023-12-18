@@ -22,5 +22,6 @@ def flags_to_namespace(flags: Dict) -> SimpleNamespace:
     x = [f"{x}: {y}" for x, y in flags.__dict__.items()]
     for y in x:
         print(y)
+    print()
 
     return flags

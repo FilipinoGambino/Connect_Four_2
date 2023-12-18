@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 from torch.nn import LeakyReLU, Linear, Sequential
 
 from typing import Tuple
@@ -7,7 +8,7 @@ from ..utility_constants import BOARD_SIZE
 
 NUM_ACTIONS = BOARD_SIZE[1]
 
-class ActorCritic(torch.nn.Module):
+class ActorCritic(nn.Module):
     """Combined actor-critic network"""
     def __init__(self, num_input_units):
         super().__init__()
@@ -19,6 +20,11 @@ class ActorCritic(torch.nn.Module):
         )
         self.actor = Linear(num_hidden_units, NUM_ACTIONS)
         self.critic = Linear(num_hidden_units, 1)
+
+    def __str__(self):
+        return (f"{str(self.common.modules)}\n"
+                f"{str(self.actor.modules)}\n"
+                f"{str(self.critic.modules)}\n")
 
     def forward(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         x = self.common(inputs)
