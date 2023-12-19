@@ -14,7 +14,7 @@ ENV_CONFIG_PATH = Path(__file__).parent.parent.parent / "env_config.yaml"
 # CHECKPOINT_PATH, = list(Path(__file__).parent.glob('*.pt'))
 
 
-class RLAgent:
+class Actor:
     def __init__(self, player_id):
         # with open(MODEL_CONFIG_PATH, 'r') as file:
         #     self.model_flags = flags_to_namespace(yaml.safe_load(file))
@@ -44,7 +44,7 @@ class RLAgent:
         self.model = ActorCritic(num_inputs)
 
     def __call__(self, *args, **kwargs):
-        pass
+        logits = self.step
 
     def step(self, action):
         self.env.step(action)
@@ -58,5 +58,5 @@ class RLAgent:
         return self.unwrapped_env.env.state
 
 if __name__=="__main__":
-    agent = RLAgent(1)
+    agent = Actor(1)
     print(agent.model)
