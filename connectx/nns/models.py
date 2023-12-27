@@ -1,3 +1,4 @@
+import gym
 import torch
 from torch import nn
 from typing import Any, Callable, Dict, Optional, Union
@@ -80,7 +81,8 @@ class BasicActorCriticNetwork(nn.Module):
         self.actor_base = nn.Sequential(*actor_layers)
         self.actor = DictActor(self.base_out_channels, action_space)
 
-        self.baseline_base = nn.Sequential(*baseline_layers)"""
+        self.baseline_base = nn.Sequential(*baseline_layers)
+        """
 
         self.actor_base = self.make_spectral_norm_head_base(
             n_layers=n_action_value_layers,
