@@ -23,10 +23,10 @@ class AttnBlock:
         print(f"value shape: {self.v.shape}")
 
     def split_heads(self, inputs):
+        pass
 
-
-    def forward(self, x):
-        print(f"transposed shape: {x.mT.shape}")
+    def forward(self, src, targ):
+        print(f"transposed shape: {src.mT.shape}")
         query = self.q.matmul(x.mT)
         query = F.softmax(query * (float(self.heads) ** -0.5))
         torch.matmul(query, key.transpose(-2, -1))
