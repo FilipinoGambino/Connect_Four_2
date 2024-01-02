@@ -7,43 +7,72 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+class AttnVector(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            heads,
+            proj_channels,
+    ):
+        super(AttnVector, self).__init__()
+        self.heads = heads
+        self.w = nn.Parameter(torch.Tensor(in_channels, heads, proj_channels // heads))
 
-class AttnBlock:
-    def __init__(self, emb_dim):
-        self.heads = 3
-        self.q_dim = emb_dim * self.heads
-        self.k_dim = 24
-        self.v_dim = 32
+        nn.init.normal_(self.w, std=0.01)
 
-        self.q = nn.Parameter(torch.rand(self.heads, self.q_dim, emb_dim))
-        self.k = nn.Parameter(torch.rand(self.heads, self.k_dim, emb_dim))
-        self.v = nn.Parameter(torch.rand(self.heads, self.v_dim, emb_dim))
-        print(f"query shape: {self.q.shape}")
-        print(f"key shape: {self.k.shape}")
-        print(f"value shape: {self.v.shape}")
+    def forward(self, x: torch.Tensor):
+        out = torch.einsum('bhwc,cnp->bhwnp', x, self.w)
+        return out
 
-    def split_heads(self, inputs):
-        pass
 
-    def forward(self, src, targ):
-        print(f"transposed shape: {src.mT.shape}")
-        query = self.q.matmul(x.mT)
-        query = F.softmax(query * (float(self.heads) ** -0.5))
-        torch.matmul(query, key.transpose(-2, -1))
-        k_out = self.q.matmul(q_out)
+class AttnBlock(nn.Module):
+    def __init__(
+            self,
+            dim,
+            heads,
+            bias: bool = False
+    ):
+        super().__init__()
 
-        v_out = self.q.matmul(x.mT)
+        assert dim % heads == 0, f"dim:{dim} | heads:{heads}"
+        self.heads = heads
+        self.qkv_dim = dim // heads
 
-        weights = q_out.dot(k_out)
+        print(f"dim: {dim} | heads: {heads} | qkv_dim: {self.qkv_dim}")
+        self.q = AttnVector(dim, heads, proj_channels=1)
+        self.k = AttnVector(dim, heads, proj_channels=1)
+        self.v = AttnVector(dim, heads, proj_channels=1)
 
-        attn = v_out * weights
+        self.scale = self.qkv_dim ** -0.5
 
-        return F.softmax(attn / (self.q_dim ** 1/2), dim=0)
+        self.drop = nn.Dropout(0.1)
 
-matrix = torch.randint(low=1, high=10, size=[5,10])
+    def forward(self, x, mask):
+        print(f"embds shape: {x.shape}")
+        query = self.q(x)
+        key = self.k(x)
+        value = self.v(x)
+        print(f"query shape: {query.shape}\nkey shape: {key.shape}\nvalue shape: {value.shape}\n")
+        weights = torch.einsum('bhwc,bpqd->bhwpq', query, key)
+        print(f"weights shape: {weights.shape}")
+        if mask is not None:
+            raise NotImplementedError
+
+        weights = self.drop(weights)
+        weights *= self.scale
+        weights = F.softmax(weights, dim=-1)
+        print(f"value shape: {value.shape}")
+        attn = weights @ value
+
+        return attn
+'''
+bs = batch size
+h = height
+w = width
+c = channels
+'''
+matrix = torch.randint(low=1, high=10, size=[8,6,7,4])
 print(f"matrix shape: {matrix.shape}")
-embedding = nn.Embedding(matrix.shape[-1], 16)
-embds = embedding(matrix)
-print(f"embds shape: {embds.shape}")
-attn_block = AttnBlock(embds.shape[-1])
-print(attn_block.forward(embds))
+
+attn_block = AttnBlock(matrix.shape[-1], 4)
+print(attn_block(matrix, None))
