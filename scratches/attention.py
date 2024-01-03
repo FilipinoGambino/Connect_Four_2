@@ -12,16 +12,16 @@ class AttnVector(nn.Module):
             self,
             in_channels,
             heads,
-            proj_channels,
     ):
         super(AttnVector, self).__init__()
         self.heads = heads
-        self.w = nn.Parameter(torch.Tensor(in_channels, heads, proj_channels // heads))
 
-        nn.init.normal_(self.w, std=0.01)
+        self.w = nn.Linear(in_channels, in_channels)
+
+        # nn.init.normal_(self.w, std=0.01)
 
     def forward(self, x: torch.Tensor):
-        out = torch.einsum('bhwc,cnp->bhwnp', x, self.w)
+        out = self.w(x)
         return out
 
 
@@ -38,30 +38,30 @@ class AttnBlock(nn.Module):
         self.heads = heads
         self.qkv_dim = dim // heads
 
-        print(f"dim: {dim} | heads: {heads} | qkv_dim: {self.qkv_dim}")
-        self.q = AttnVector(dim, heads, proj_channels=1)
-        self.k = AttnVector(dim, heads, proj_channels=1)
-        self.v = AttnVector(dim, heads, proj_channels=1)
+        print(f"dim: {dim} | heads: {heads} | qkv_dim: {dim // heads}")
+        self.q = AttnVector(dim, heads)
+        self.k = AttnVector(dim, heads)
+        self.v = AttnVector(dim, heads)
 
         self.scale = self.qkv_dim ** -0.5
 
         self.drop = nn.Dropout(0.1)
 
     def forward(self, x, mask):
-        print(f"embds shape: {x.shape}")
+        # print(f"embds shape: {x.shape}")
         query = self.q(x)
         key = self.k(x)
         value = self.v(x)
         print(f"query shape: {query.shape}\nkey shape: {key.shape}\nvalue shape: {value.shape}\n")
         weights = torch.einsum('bhwc,bpqd->bhwpq', query, key)
-        print(f"weights shape: {weights.shape}")
+        # print(f"weights shape: {weights.shape}")
         if mask is not None:
             raise NotImplementedError
 
         weights = self.drop(weights)
         weights *= self.scale
         weights = F.softmax(weights, dim=-1)
-        print(f"value shape: {value.shape}")
+        # print(f"value shape: {value.shape}")
         attn = weights @ value
 
         return attn
@@ -70,9 +70,10 @@ bs = batch size
 h = height
 w = width
 c = channels
+e = embeddings
 '''
-matrix = torch.randint(low=1, high=10, size=[8,6,7,4])
-print(f"matrix shape: {matrix.shape}")
-
+matrix = torch.randint(low=0, high=2, size=[8,6,7,4], dtype=torch.float32)
+# emb = nn.Embedding(2,16)
+# embs = emb(matrix)
 attn_block = AttnBlock(matrix.shape[-1], 4)
 print(attn_block(matrix, None))
