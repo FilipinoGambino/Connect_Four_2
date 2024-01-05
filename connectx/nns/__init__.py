@@ -117,6 +117,11 @@ def _create_model(
                 normalize=flags.normalize,
             ) for _ in range(flags.n_blocks)]
         )
+    elif flags.model_arch == "":
+        base_model = nn.Sequential(
+            conv_embedding_input_layer,
+
+        )
     elif flags.model_arch == "linear_model":
         base_model = nn.Sequential(
             *[(nn.Linear(flags.in_dim, flags.hidden_dim),
