@@ -65,15 +65,16 @@ class _FixedShapeContinuousObsWrapper(gym.Wrapper):
 
     def observation(self, observation: Dict) -> Dict[str, np.ndarray]:
         rows, cols = BOARD_SIZE
-        board = np.array(observation['board'],dtype=np.float32).reshape((rows, cols))
+        board = np.array(observation['board'], dtype=np.float32).reshape((rows, cols))
         p1_mark = observation['mark']
         p2_mark = (p1_mark + 1) % 2
+        norm_step = observation['step'] / (rows * cols)
 
         obs = {
-            "board": board,
+            "filled_cells": np.where(board != 0, 1, 0),
             "empty_cells": np.where(board == 0, 1, 0),
             "p1_cells": np.where(board == p1_mark, 1, 0),
             "p2_cells": np.where(board == p2_mark, 1, 0),
-            "turn": observation['step'],
+            "turn": np.full_like(board, fill_value=norm_step, dtype=float),
         }
         return obs
