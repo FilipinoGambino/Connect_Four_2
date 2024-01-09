@@ -14,7 +14,16 @@ class DictInputLayer(nn.Module):
                 x["info"].get("subtask_embeddings", None))
 
 class ConvEmbeddingInputLayer(nn.Module):
-    def __init__(self):
+    def __init__(
+            self,
+            obs_space,
+            embedding_dim,
+            out_dim,
+            n_merge_layers,
+            sum_player_embeddings,
+            use_index_select,
+            obs_space_prefix,
+    ):
         super(ConvEmbeddingInputLayer, self).__init__()
 
     def forward(self, x):
