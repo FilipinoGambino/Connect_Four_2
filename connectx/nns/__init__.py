@@ -24,22 +24,16 @@ def create_model(
         obs_space,
     )
 
-
 def _create_model(
         flags,
         device: torch.device,
         obs_space: obs_spaces.BaseObsSpace,
-        obs_space_prefix: str
 ):
     act_space = flags.act_space()
     conv_embedding_input_layer = ConvEmbeddingInputLayer(
         obs_space=obs_space.get_obs_spec(),
         embedding_dim=flags.embedding_dim,
         out_dim=flags.hidden_dim,
-        n_merge_layers=flags.n_merge_layers,
-        sum_player_embeddings=flags.sum_player_embeddings,
-        use_index_select=flags.use_index_select,
-        obs_space_prefix=obs_space_prefix
     )
     if flags.model_arch == "mha_model":
         base_model = nn.Sequential(
@@ -48,7 +42,8 @@ def _create_model(
         )
     elif flags.model_arch == "linear_model":
         base_model = nn.Sequential(
-            *[(nn.Linear(flags.in_dim, flags.hidden_dim),
+            conv_embedding_input_layer,
+            *[(nn.Linear(flags.out_dim, flags.hidden_dim),
             nn.LeakyReLU(),
             ) for _ in range(flags.n_blocks)]
         )

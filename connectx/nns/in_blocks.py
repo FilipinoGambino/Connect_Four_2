@@ -1,8 +1,9 @@
-from typing import Dict, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import gym.spaces
 import torch
 from torch import nn
+import numpy as np
 
 class DictInputLayer(nn.Module):
     @staticmethod
@@ -20,30 +21,51 @@ class ConvEmbeddingInputLayer(nn.Module):
             obs_space,
             embedding_dim,
             out_dim,
-            n_merge_layers,
+            activation: Callable = nn.LeakyReLU,
     ):
         super(ConvEmbeddingInputLayer, self).__init__()
-        cont_embs = []
-        disc_embs = []
+        cont_channels = 0
+        emb_channels = 0
         embeddings = dict()
-        for key, val in obs_space.spaces.items():
+        self.keys_to_op = dict()
+        for key,val in obs_space.spaces.items():
             if isinstance(val, gym.spaces.MultiBinary):
-                embeddings = nn.Embedding(2, embedding_dim)
+                n_embeddings = 2
+                self.keys_to_op[key] = "embedding"
             elif isinstance(val, gym.spaces.Box):
-                print(val.shape)
+                cont_channels += np.prod(val.shape[:2])
+                self.keys_to_op[key] = "continuous"
             else:
                 raise NotImplementedError(f"{val} is not an accepted observation space.")
-
+            embeddings[key] = nn.Embedding(n_embeddings, embedding_dim)
+            emb_channels += n_embeddings
+        self.embeddings = nn.ModuleDict(embeddings)
+        cont_embs = [
+            nn.Conv2d(cont_channels, out_dim, (1,1)),
+            activation()
+        ]
+        emb_merge = [
+            nn.Conv2d(emb_channels, out_dim, (1,1)),
+            activation()
+        ]
+        merger_layers = nn.Conv2d(out_dim * 2, out_dim, (1, 1))
+        self.continuous_space_embedding = nn.Sequential(*cont_embs)
+        self.embedding_merger = nn.Sequential(*emb_merge)
+        self.merger = nn.Sequential(merger_layers)
 
     def forward(self, x):
         x, input_mask = x
-
-if __name__=="__main__":
-    import numpy as np
-    from connectx.connectx_gym import obs_spaces
-
-    o = obs_spaces.FixedShapeContinuousObs()
-    spaces = o.get_obs_spec()
-    for key,val in spaces.items():
-        shape = val.shape
-        print(f"{key}: {val} with shape {np.prod(shape)}")
+        cont_outs = []
+        emb_outs = dict()
+        for key,op in self.keys_to_op.items():
+            in_tensor = x[key]
+            if op == "embedding":
+                emb_outs[key] = self.embeddings[key](in_tensor)
+            elif op == "continuous":
+                cont_outs.append(in_tensor)
+            else:
+                raise RuntimeError(f"Unknown operation: {op}")
+        continuous_outs = self.continuous_space_embedding(torch.cat(cont_outs, dim=1))
+        embedding_outs = self.embedding_merger(torch.cat([emb_tensor for emb_tensor in emb_outs.values()], dim=1))
+        merged_outs = self.merger(torch.cat([continuous_outs, embedding_outs], dim=1))
+        return merged_outs, input_mask
