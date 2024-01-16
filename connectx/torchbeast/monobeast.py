@@ -36,7 +36,6 @@ from .core import prof, td_lambda, upgo, vtrace
 from .core.buffer_utils import Buffers, create_buffers, fill_buffers_inplace, stack_buffers, split_buffers, \
     buffers_apply
 from ..connectx_gym import create_env
-# from ..connectx_gym.act_spaces import ACTION_MEANINGS
 from ..nns import create_model
 from ..utils import flags_to_namespace
 

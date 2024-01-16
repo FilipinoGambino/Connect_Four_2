@@ -28,17 +28,19 @@ class ConvEmbeddingInputLayer(nn.Module):
         emb_channels = 0
         embeddings = dict()
         self.keys_to_op = dict()
+
         for key,val in obs_space.spaces.items():
             if isinstance(val, gym.spaces.MultiBinary):
                 n_embeddings = 2
                 self.keys_to_op[key] = "embedding"
+                embeddings[key] = nn.Embedding(n_embeddings, embedding_dim)
+                emb_channels += n_embeddings
             elif isinstance(val, gym.spaces.Box):
                 cont_channels += np.prod(val.shape[:2])
                 self.keys_to_op[key] = "continuous"
             else:
                 raise NotImplementedError(f"{val} is not an accepted observation space.")
-            embeddings[key] = nn.Embedding(n_embeddings, embedding_dim)
-            emb_channels += n_embeddings
+
         self.embeddings = nn.ModuleDict(embeddings)
         cont_embs = [
             nn.Conv2d(cont_channels, out_dim, (1,1)),

@@ -101,6 +101,14 @@ class MultiLinear(nn.Module):
             bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.biases, -bound, bound)
 
+    def forward(self, x: torch.Tensor, embedding_idxs: torch.Tensor) -> torch.Tensor:
+        weights = self.weights[embedding_idxs]
+        if self.biases is None:
+            biases = 0.
+        else:
+            biases = self.biases[embedding_idxs]
+        return torch.matmul(x.unsqueeze(1), weights).squeeze(1) + biases
+
 class BaselineLayer(nn.Module):
     def __init__(self, in_channels: int, reward_space: RewardSpec, n_value_heads: int, rescale_input: bool):
         super(BaselineLayer, self).__init__()

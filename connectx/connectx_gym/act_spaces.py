@@ -4,9 +4,9 @@ import numpy as np
 import numpy.ma as ma
 import gym
 from kaggle_environments.core import Environment
-
 from typing import Dict, List, Optional, Tuple
-from ..utility_constants import BOARD_SIZE
+
+from connectx.utility_constants import BOARD_SIZE
 
 ROWS,COLUMNS = BOARD_SIZE
 
@@ -53,3 +53,9 @@ class BasicActionSpace(BaseActSpace):
     def get_available_actions_mask(game_state: Environment) -> Dict[str, np.ndarray]:
         available_actions_mask = np.array(game_state.all(axis=0)).reshape([1,COLUMNS])
         return available_actions_mask
+
+
+if __name__ == "__main__":
+    act = BasicActionSpace()
+    space = act.get_action_space()
+    print(space.contains(6))

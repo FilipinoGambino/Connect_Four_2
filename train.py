@@ -10,12 +10,19 @@ from types import SimpleNamespace
 
 from connectx.connectx_gym import create_env
 from connectx.nns import create_model
+<<<<<<< Updated upstream
+=======
+from connectx.utils import flags_to_namespace
+>>>>>>> Stashed changes
 
 from typing import Tuple
 
 import yaml
 import torch
+<<<<<<< Updated upstream
 from connectx.utils import flags_to_namespace
+=======
+>>>>>>> Stashed changes
 
 # path = '.\\connectx\\base_replays\\'
 # for dir, folders, files in os.walk(path):
@@ -45,12 +52,20 @@ from connectx.utils import flags_to_namespace
 def load_object(dct):
     return SimpleNamespace(**dct)
 
+<<<<<<< Updated upstream
 with open("connectx/agent/model_config.yaml", 'r') as file:
     flags = flags_to_namespace(yaml.safe_load(file))
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 env = create_env(flags, device)
 # done = torch.Tensor([False, False])
+=======
+with open("env_config.yaml", 'r') as file:
+    flags = flags_to_namespace(yaml.safe_load(file))
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+env = create_env(flags, device)
+>>>>>>> Stashed changes
 
 # Set seed for experiment reproducibility
 seed = 42
@@ -238,29 +253,11 @@ gamma = 0.99
 # Keep the last episodes reward
 episodes_reward: collections.deque = collections.deque(maxlen=min_episodes_criterion)
 print(__file__)
-# t = tqdm.trange(max_episodes)
-# idx = 0
-# for i in t:
-#     idx = i
-#     initial_state, reward, done, info = env.reset().values()
-#     initial_state = reshape(initial_state)
-#     # initial_state = tf.constant(initial_state, dtype=tf.float32)
-#     # print(f"\nouter loop initial_state:\n{initial_state}")
-#     episode_reward = int(train_step(initial_state, model, optimizer, gamma, max_steps_per_episode))
-#
-#     episodes_reward.append(episode_reward)
-#     running_reward = statistics.mean(episodes_reward)
-#
-#     t.set_postfix(episode_reward=episode_reward, running_reward=running_reward)
-#
-#     # Show the average episode reward every 10 episodes
-#     if i % 10 == 0:
-#       pass # print(f'Episode {i}: average reward: {avg_reward}')
-#
-#     if running_reward > reward_threshold and i >= min_episodes_criterion:
-#         break
-#
-# print(f'\nSolved at episode {idx}: average reward: {running_reward:.2f}!')
+print(f"\nHere's yo model bitchass!!!!!\n\n{model}")
 
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 if __name__=='__main__':
     pass
