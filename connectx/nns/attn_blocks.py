@@ -108,28 +108,28 @@ class ViTBlock(nn.Module):
         return (self.mlp(self.norm2(x)) + x) * input_mask
 
 
-if __name__=="__main__":
-    import matplotlib.pyplot as plt
-    '''
-    bs = batch size
-    h = height
-    w = width
-    c = channels
-    n = heads
-    d = embeddings
-    '''
-    # matrix = torch.randint(low=0, high=2, size=[8, 6, 7, 4], dtype=torch.float32)
-    matrix = torch.eye(6,7, dtype=torch.float32).reshape([1,6,7,1]).repeat(8,1,1,4)
-
-    attn_block = MHABlock(matrix.shape[-1], 2, False)
-    attention = attn_block(matrix, None).detach()
-
-    plt.figure(1)
-    rows = 2
-    cols = 4
-    index = int(f"{rows}{cols}0")
-    for idx in range(attention.shape[0]):
-        index += 1
-        plt.subplot(index)
-        plt.imshow(attention[idx], cmap='hot', interpolation='nearest')
-    plt.show()
+# if __name__=="__main__":
+#     import matplotlib.pyplot as plt
+#     '''
+#     bs = batch size
+#     h = height
+#     w = width
+#     c = channels
+#     n = heads
+#     d = embeddings
+#     '''
+#     # matrix = torch.randint(low=0, high=2, size=[8, 6, 7, 4], dtype=torch.float32)
+#     matrix = torch.eye(6,7, dtype=torch.float32).reshape([1,6,7,1]).repeat(8,1,1,4)
+#
+#     attn_block = MHABlock(matrix.shape[-1], 2, False)
+#     attention = attn_block(matrix, None).detach()
+#
+#     plt.figure(1)
+#     rows = 2
+#     cols = 4
+#     index = int(f"{rows}{cols}0")
+#     for idx in range(attention.shape[0]):
+#         index += 1
+#         plt.subplot(index)
+#         plt.imshow(attention[idx], cmap='hot', interpolation='nearest')
+#     plt.show()

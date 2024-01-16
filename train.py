@@ -9,14 +9,13 @@ import yaml
 from types import SimpleNamespace
 
 from connectx.connectx_gym import create_env
-from connectx.actor_critic.policy import ActorCritic
+from connectx.nns import create_model
 
 from typing import Tuple
 
 import yaml
 import torch
 from connectx.utils import flags_to_namespace
-from connectx.connectx_gym import create_env
 
 # path = '.\\connectx\\base_replays\\'
 # for dir, folders, files in os.walk(path):
@@ -46,10 +45,11 @@ from connectx.connectx_gym import create_env
 def load_object(dct):
     return SimpleNamespace(**dct)
 
-with open("/env_config.yaml", 'r') as file:
+with open("connectx/agent/model_config.yaml", 'r') as file:
     flags = flags_to_namespace(yaml.safe_load(file))
 
-env = create_env(flags, 'cpu')
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+env = create_env(flags, device)
 # done = torch.Tensor([False, False])
 
 # Set seed for experiment reproducibility
@@ -60,7 +60,7 @@ np.random.seed(seed)
 # Small epsilon value for stabilizing division operations
 eps = np.finfo(np.float32).eps.item()
 
-model = ActorCritic()
+model = create_model(flags, device)
 
 # def env_step(action_tensors: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
 #     """Returns state, reward, done, info flag given an action."""
@@ -262,21 +262,5 @@ print(__file__)
 #
 # print(f'\nSolved at episode {idx}: average reward: {running_reward:.2f}!')
 
-# if __name__=='__main__':
-    # import yaml
-    # import torch
-    # from connectx.utils import flags_to_namespace
-    # from connectx.connectx_gym import create_env
-    #
-    # # fname = "C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2/flags.yaml"
-    # fname = "D:/Nick/Documents/GitHub/Connect_Four_2/flags.yaml"
-    # yfile = yaml.safe_load(open(fname, 'r'))
-    #
-    # flags = flags_to_namespace(yfile)
-    # env = create_env(flags, 'cpu')
-    # done = torch.Tensor([False, False])
-    # while not done.any():
-    #     obs, reward, done, info = env.step(torch.randn(2,7))
-    #     print(obs['board'])
-    #
-    # env.render()
+if __name__=='__main__':
+    pass

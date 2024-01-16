@@ -1,9 +1,10 @@
 import gym
+import math
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, Union
 
 from .in_blocks import DictInputLayer
 from ..connectx_gym.reward_spaces import RewardSpec
@@ -13,65 +14,52 @@ class DictActor(nn.Module):
     def __init__(
             self,
             in_channels: int,
-            action_space: gym.spaces.Dict,
+            action_space: gym.spaces.Discrete,
     ):
         super(DictActor, self).__init__()
-        self.n_actions = {
-            key: space.nvec.max() for key, space in action_space.spaces.items()
-        }
-        # An action plane shape usually takes the form (n,), where n >= 1 and is used when multiple stacked units
-        # must output different actions.
-        self.action_plane_shapes = {
-            key: space.shape[:-3] for key, space in action_space.spaces.items()
-        }
-        assert all([len(aps) == 1 for aps in self.action_plane_shapes.values()])
-        self.actors = nn.ModuleDict({
-            key: nn.Conv2d(
-                in_channels,
-                n_act * np.prod(self.action_plane_shapes[key]),
-                (1, 1)
-            ) for key, n_act in self.n_actions.items()
-        })
+        self.n_actions = action_space.n
+
+        self.actor = nn.Conv2d(
+            in_channels,
+            self.n_actions,
+            (1, 1)
+        )
 
     def forward(
             self,
             x: torch.Tensor,
-            available_actions_mask: Dict[str, torch.Tensor],
+            available_actions_mask: torch.Tensor,
             sample: bool,
-    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Expects an input of shape batch_size * 2, n_channels, h, w
         This input will be projected by the actors, and then converted to shape batch_size, n_channels, 2, h, w
         """
-        policy_logits_out = {}
-        actions_out = {}
+
         b, _, h, w = x.shape
-        for key, actor in self.actors.items():
-            n_actions = self.n_actions[key]
-            action_plane_shape = self.action_plane_shapes[key]
-            logits = actor(x).view(b // 2, 2, n_actions, *action_plane_shape, h, w)
-            # Move the logits dimension to the end and swap the player and channel dimensions
-            logits = logits.permute(0, 3, 1, 4, 5, 2).contiguous()
-            # In case all actions are masked, unmask all actions
-            # We first have to cast it to an int tensor to avoid errors in kaggle environment
-            aam = available_actions_mask[key]
-            orig_dtype = aam.dtype
-            aam_new_type = aam.to(dtype=torch.int64)
-            aam_filled = torch.where(
-                (~aam).all(dim=-1, keepdim=True),
-                torch.ones_like(aam_new_type),
-                aam_new_type.to(dtype=torch.int64)
-            ).to(orig_dtype)
-            assert logits.shape == aam_filled.shape
-            logits = logits + torch.where(
-                aam_filled,
-                torch.zeros_like(logits),
-                torch.zeros_like(logits) + float("-inf")
-            )
-            actions = DictActor.logits_to_actions(logits.view(-1, n_actions), sample)
-            policy_logits_out[key] = logits
-            actions_out[key] = actions.view(*logits.shape[:-1], -1)
-        return policy_logits_out, actions_out
+
+        logits = self.actor(x).view(b // 2, 2, self.n_actions, h, w)
+        # Move the logits dimension to the end and swap the player and channel dimensions
+        logits = logits.permute(0, 1, 3, 4, 2).contiguous()
+        # In case all actions are masked, unmask all actions
+        # We first have to cast it to an int tensor to avoid errors in kaggle environment
+        aam = available_actions_mask
+        orig_dtype = aam.dtype
+        aam_new_type = aam.to(dtype=torch.int64)
+        aam_filled = torch.where(
+            (~aam).all(dim=-1, keepdim=True),
+            torch.ones_like(aam_new_type),
+            aam_new_type.to(dtype=torch.int64)
+        ).to(orig_dtype)
+        assert logits.shape == aam_filled.shape
+        logits = logits + torch.where(
+            aam_filled,
+            torch.zeros_like(logits),
+            torch.zeros_like(logits) + float("-inf")
+        )
+        actions = DictActor.logits_to_actions(logits.view(-1, self.n_actions), sample)
+        actions_out = actions.view(*logits.shape[:-1], -1)
+        return logits, actions_out
 
     @staticmethod
     @torch.no_grad()
@@ -93,6 +81,25 @@ class DictActor(nn.Module):
             )
         else:
             return logits.argsort(dim=-1, descending=True)[..., :actions_per_square]
+
+class MultiLinear(nn.Module):
+    # TODO: Add support for subtask float weightings instead of integer indices
+    def __init__(self, num_layers: int, in_features: int, out_features: int, bias: bool = True):
+        super(MultiLinear, self).__init__()
+        self.weights = nn.Parameter(torch.empty((num_layers, in_features, out_features)))
+        if bias:
+            self.biases = nn.Parameter(torch.empty((num_layers, out_features)))
+        else:
+            self.register_parameter("biases", None)
+        self.reset_parameters()
+
+    def reset_parameters(self) -> NoReturn:
+        nn.init.kaiming_uniform_(self.weights, a=math.sqrt(5))
+        if self.biases is not None:
+            # noinspection PyProtectedMember
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weights)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.biases, -bound, bound)
 
 class BaselineLayer(nn.Module):
     def __init__(self, in_channels: int, reward_space: RewardSpec, n_value_heads: int, rescale_input: bool):
@@ -116,7 +123,7 @@ class BaselineLayer(nn.Module):
             self.reward_min *= reward_space_expanded
             self.reward_max *= reward_space_expanded
 
-    def forward(self, x: torch.Tensor, input_mask: torch.Tensor, value_head_idxs: Optional[torch.Tensor]):
+    def forward(self, x: torch.Tensor, input_mask: torch.Tensor, value_head_idxs: Optional[torch.Tensor]) -> torch.Tensor:
         """
         Expects an input of shape b * 2, n_channels, x, y
         Returns an output of shape b, 2

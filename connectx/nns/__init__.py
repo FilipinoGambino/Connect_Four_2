@@ -38,7 +38,10 @@ def _create_model(
     if flags.model_arch == "mha_model":
         base_model = nn.Sequential(
             conv_embedding_input_layer,
-            MHABlock
+            MHABlock(
+                dim=flags.hidden_dim,
+                heads=flags.n_heads
+            )
         )
     elif flags.model_arch == "linear_model":
         base_model = nn.Sequential(
