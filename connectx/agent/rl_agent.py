@@ -34,7 +34,7 @@ class RLAgent:
 
         self.env = create_env(self.model_flags, self.device)
         obs = self.env.unwrapped[0].obs_space.get_obs_spec().sample()
-        self.action_placeholder = 1
+        self.action_placeholder = [torch.ones(1) for _ in range(self.model_flags.n_actor_envs)]
 
         num_inputs = 0
         for key in obs:
@@ -45,17 +45,17 @@ class RLAgent:
 
         self.stopwatch = Stopwatch()
 
-    def __call__(self, obs, conf, raw_model_output: bool = False):
+    def __call__(self, obs, raw_model_output: bool = False):
         self.stopwatch.reset()
 
         self.stopwatch.start("Observation processing")
         # self.preprocess(obs, conf)
         env_output = self.get_env_output()
+        print(f'output: {env_output["obs"]}')
         relevant_env_output_augmented = {
             "obs": env_output["obs"],
             "info": {
-                "input_mask": env_output["info"]["input_mask"],
-                "available_actions_mask": env_output["info"]["available_actions_mask"],
+                "available_actions_mask": self.env.unwrapped[0].action_space.get_available_actions_mask(env_output['obs']),
             },
         }
 
@@ -66,7 +66,7 @@ class RLAgent:
                 "policy_logits": self.aggregate_augmented_predictions(agent_output_augmented["policy_logits"]),
                 "baseline": agent_output_augmented["baseline"].mean(dim=0, keepdim=True).cpu()
             }
-            agent_output["actions"] = models.DictActor.logits_to_actions(
+            agent_output["action"] = models.DictActor.logits_to_actions(
                 torch.flatten(agent_output["policy_logits"], start_dim=0, end_dim=-2),
                 sample=False,
                 actions_per_square=None
@@ -77,7 +77,7 @@ class RLAgent:
             return agent_output
 
         self.stopwatch.stop().start("Collision detection")
-        actions, _ = self.unwrapped_env.process_actions(agent_output["actions"].squeeze(0).numpy())
+        actions = agent_output["action"]
 
         self.stopwatch.stop()
 
@@ -92,6 +92,7 @@ class RLAgent:
         return actions
 
     def get_env_output(self):
+        print(self.action_placeholder)
         return self.env.step(self.action_placeholder)
 
     def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
@@ -121,4 +122,4 @@ class RLAgent:
 
 if __name__=="__main__":
     agent = RLAgent(1)
-    print(agent.model)
+    print(agent(agent.env.reset()))

@@ -63,24 +63,12 @@ class DictActor(nn.Module):
 
     @staticmethod
     @torch.no_grad()
-    def logits_to_actions(logits: torch.Tensor, sample: bool, actions_per_square: Optional[int]) -> torch.Tensor:
-        if actions_per_square is None:
-            actions_per_square = logits.shape[-1]
+    def logits_to_actions(logits: torch.Tensor, sample: bool) -> torch.Tensor:
         if sample:
             probs = F.softmax(logits, dim=-1)
-            # In case there are fewer than MAX_OVERLAPPING_ACTIONS available actions, we add a small eps value
-            probs = torch.where(
-                (probs > 0.).sum(dim=-1, keepdim=True) >= actions_per_square,
-                probs,
-                probs + 1e-10
-            )
-            return torch.multinomial(
-                probs,
-                num_samples=min(actions_per_square, probs.shape[-1]),
-                replacement=False
-            )
+            return torch.multinomial(probs, num_samples=1, replacement=False)
         else:
-            return logits.argsort(dim=-1, descending=True)[..., :actions_per_square]
+            return torch.argmax(logits, dim=-1)
 
 class MultiLinear(nn.Module):
     # TODO: Add support for subtask float weightings instead of integer indices

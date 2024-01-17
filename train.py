@@ -10,19 +10,13 @@ from types import SimpleNamespace
 
 from connectx.connectx_gym import create_env
 from connectx.nns import create_model
-<<<<<<< Updated upstream
-=======
 from connectx.utils import flags_to_namespace
->>>>>>> Stashed changes
 
 from typing import Tuple
 
 import yaml
 import torch
-<<<<<<< Updated upstream
-from connectx.utils import flags_to_namespace
-=======
->>>>>>> Stashed changes
+
 
 # path = '.\\connectx\\base_replays\\'
 # for dir, folders, files in os.walk(path):
@@ -52,20 +46,11 @@ from connectx.utils import flags_to_namespace
 def load_object(dct):
     return SimpleNamespace(**dct)
 
-<<<<<<< Updated upstream
 with open("connectx/agent/model_config.yaml", 'r') as file:
     flags = flags_to_namespace(yaml.safe_load(file))
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 env = create_env(flags, device)
-# done = torch.Tensor([False, False])
-=======
-with open("env_config.yaml", 'r') as file:
-    flags = flags_to_namespace(yaml.safe_load(file))
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-env = create_env(flags, device)
->>>>>>> Stashed changes
 
 # Set seed for experiment reproducibility
 seed = 42
@@ -255,9 +240,6 @@ episodes_reward: collections.deque = collections.deque(maxlen=min_episodes_crite
 print(__file__)
 print(f"\nHere's yo model bitchass!!!!!\n\n{model}")
 
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
 if __name__=='__main__':
     pass

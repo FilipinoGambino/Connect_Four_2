@@ -25,13 +25,13 @@ class LoggingEnv(gym.Wrapper):
         return info
 
     def reset(self, **kwargs):
-        obs, info = super(LoggingEnv, self).reset(**kwargs)
+        obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
         # self._reset_peak_vals()
         self.reward_sums = [0., 0.]
         self.actions_distributions = {
             key: 0. for key in self.actions_distributions.keys()
         }
-        return obs, self.info(info, self.reward_sums)
+        return obs, reward, done, self.info(info, self.reward_sums)
 
     def step(self, action: Dict[str, np.ndarray]):
         obs, reward, done, info = super(LoggingEnv, self).step(action)
@@ -52,8 +52,8 @@ class RewardSpaceWrapper(gym.Wrapper):
         return rewards, done
 
     def reset(self, **kwargs):
-        obs, info = super(RewardSpaceWrapper, self).reset(**kwargs)
-        return obs, *self._get_rewards_and_done(), info
+        obs, rewards, done, info = super(RewardSpaceWrapper, self).reset(**kwargs)
+        return obs, rewards, done, info
 
     def step(self, action):
         obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
@@ -73,18 +73,18 @@ class VecEnv(gym.Env):
 
     @staticmethod
     def _vectorize_env_outs(env_outs: List[Tuple]) -> Tuple:
-        if len(env_outs[0]) < 4:
-            obs_list, info_list = zip(*env_outs)
-            obs_stacked = VecEnv._stack_dict(obs_list)
-            info_stacked = VecEnv._stack_dict(info_list)
-            return obs_stacked, info_stacked
-        else:
-            obs_list, reward_list, done_list, info_list = zip(*env_outs)
-            obs_stacked = VecEnv._stack_dict(obs_list)
-            reward_stacked = np.array(reward_list)
-            done_stacked = np.array(done_list)
-            info_stacked = VecEnv._stack_dict(info_list)
-            return obs_stacked, reward_stacked, done_stacked, info_stacked
+        # if len(env_outs[0]) < 4:
+        #     obs_list, info_list = zip(*env_outs)
+        #     obs_stacked = VecEnv._stack_dict(obs_list)
+        #     info_stacked = VecEnv._stack_dict(info_list)
+        #     return obs_stacked, info_stacked
+        # else:
+        obs_list, reward_list, done_list, info_list = zip(*env_outs)
+        obs_stacked = VecEnv._stack_dict(obs_list)
+        reward_stacked = np.array(reward_list)
+        done_stacked = np.array(done_list)
+        info_stacked = VecEnv._stack_dict(info_list)
+        return obs_stacked, reward_stacked, done_stacked, info_stacked
 
 
     def reset(self, force: bool = True, **kwargs):
@@ -102,7 +102,6 @@ class VecEnv(gym.Env):
         return VecEnv._vectorize_env_outs(self.last_outs)
 
     def step(self, actions: List[int]):
-        print(f"vec actions:\n{actions}")
         self.last_outs = [env.step(a) for env, a in zip(self.envs, actions)]
         return VecEnv._vectorize_env_outs(self.last_outs)
 
@@ -150,16 +149,21 @@ class PytorchEnv(gym.Wrapper):
         return tuple([self._to_tensor(out) for out in super(PytorchEnv, self).reset(**kwargs)])
 
     def step(self, actions: List[torch.Tensor]):
-        action = [
-            act.detach().cpu().numpy() for act in actions
-        ]
+        action = [int(act) for act in actions]
         return tuple([self._to_tensor(out) for out in super(PytorchEnv, self).step(action)])
 
     def _to_tensor(self, x: Union[Dict, np.ndarray]) -> Dict[str, Union[Dict, torch.Tensor]]:
         if isinstance(x, dict):
             return {key: self._to_tensor(val) for key, val in x.items()}
+        # TODO: I don't like this, but it'll do for now
+        elif isinstance(x, np.ndarray):
+            try:
+                return torch.from_numpy(x).to(device=self.device)
+            except TypeError:
+                return x
         else:
-            return torch.from_numpy(x).to(self.device, non_blocking=True)
+            return x
+
 
 class TensorflowEnv(gym.Wrapper):
     def __init__(self, env: Union[gym.Env, VecEnv], device: torch.device = torch.device("cpu")):
@@ -194,7 +198,9 @@ class DictEnv(gym.Wrapper):
         )
 
     def reset(self, **kwargs):
+        print("Resetting")
         return DictEnv._dict_env_out(super(DictEnv, self).reset(**kwargs))
 
     def step(self, action):
+        print("Stepping")
         return DictEnv._dict_env_out(super(DictEnv, self).step(action))

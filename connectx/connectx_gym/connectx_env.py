@@ -38,15 +38,15 @@ class ConnectFour(gym.Env):
     def reset(self, **kwargs):
         obs = self.trainer.reset()
         self.info = []
-        return obs, self.info
+        reward = 0
+        done = False
+        return obs, reward, done, self.info
 
-    def step(self, logits):
-        action = self.process_actions(logits)
+    def step(self, action):
         obs, reward, done, _ = self.trainer.step(action)
         return obs, reward, done, self.info
 
     def process_actions(self, logits: np.ndarray) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
-        # print(f"\nstate:\n{self.env.state}")
         step = self.env.state[0]['observation']['step']
         board = self.env.state[0]['observation']['board']
         obs = np.array(board).reshape(BOARD_SIZE)
