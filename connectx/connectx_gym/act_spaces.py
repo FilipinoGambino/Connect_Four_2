@@ -3,6 +3,7 @@ from functools import lru_cache
 import numpy as np
 import numpy.ma as ma
 import gym
+import torch
 from kaggle_environments.core import Environment
 from typing import Dict, List, Optional, Tuple
 
@@ -50,8 +51,8 @@ class BasicActionSpace(BaseActSpace):
         return valid_actions
 
     @staticmethod
-    def get_available_actions_mask(game_state: Environment) -> Dict[str, np.ndarray]:
-        available_actions_mask = np.array(game_state.all(axis=0)).reshape([1,COLUMNS])
+    def get_available_actions_mask(game_state: torch.Tensor) -> Dict[str, np.ndarray]:
+        available_actions_mask = np.array(game_state.all(axis=1)).reshape([1,COLUMNS])
         return available_actions_mask
 
 

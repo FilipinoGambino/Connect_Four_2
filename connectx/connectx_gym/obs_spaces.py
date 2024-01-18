@@ -32,8 +32,8 @@ class FixedShapeContinuousObs(BaseObsSpace, ABC):
         x = board_dims[0]
         y = board_dims[1]
         return gym.spaces.Dict({
-            "board": gym.spaces.MultiBinary(x * y),
-            "empties": gym.spaces.MultiBinary(x * y),
+            "filled_cells": gym.spaces.MultiBinary(x * y),
+            "empty_cells": gym.spaces.MultiBinary(x * y),
             "p1_cells": gym.spaces.MultiBinary(x * y),
             "p2_cells": gym.spaces.MultiBinary(x * y),
             "turn": gym.spaces.Box(low=0, high=1, shape=[1]),

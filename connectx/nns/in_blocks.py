@@ -9,9 +9,8 @@ class DictInputLayer(nn.Module):
     @staticmethod
     def forward(
             x: Dict[str, Union[Dict, torch.Tensor]]
-    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
         return (x["obs"],
-                x["info"]["input_mask"],
                 x["info"]["available_actions_mask"],
                 x["info"].get("subtask_embeddings", None))
 
@@ -56,18 +55,19 @@ class ConvEmbeddingInputLayer(nn.Module):
         self.merger = nn.Sequential(merger_layers)
 
     def forward(self, x):
-        x, input_mask = x
         cont_outs = []
         emb_outs = dict()
         for key,op in self.keys_to_op.items():
             in_tensor = x[key]
+            print(key, in_tensor.shape)
             if op == "embedding":
-                emb_outs[key] = self.embeddings[key](in_tensor)
+                emb_outs[key] = self.embeddings[key](in_tensor.to(torch.int32))
             elif op == "continuous":
-                cont_outs.append(in_tensor)
+                cont_outs.append(in_tensor.to(torch.float32))
             else:
                 raise RuntimeError(f"Unknown operation: {op}")
+        # print([emb_tensor.shape for emb_tensor in emb_outs.values()])
         continuous_outs = self.continuous_space_embedding(torch.cat(cont_outs, dim=1))
         embedding_outs = self.embedding_merger(torch.cat([emb_tensor for emb_tensor in emb_outs.values()], dim=1))
         merged_outs = self.merger(torch.cat([continuous_outs, embedding_outs], dim=1))
-        return merged_outs, input_mask
+        return merged_outs

@@ -51,11 +51,12 @@ class RLAgent:
         self.stopwatch.start("Observation processing")
         # self.preprocess(obs, conf)
         env_output = self.get_env_output()
-        print(f'output: {env_output["obs"]}')
+        # print(f'output: {env_output["obs"]}')
+        aam = self.env.unwrapped[0].action_space.get_available_actions_mask(env_output['obs']['filled_cells'])
         relevant_env_output_augmented = {
             "obs": env_output["obs"],
             "info": {
-                "available_actions_mask": self.env.unwrapped[0].action_space.get_available_actions_mask(env_output['obs']),
+                "available_actions_mask": aam,
             },
         }
 

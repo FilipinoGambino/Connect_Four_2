@@ -203,8 +203,8 @@ class BasicActorCriticNetwork(nn.Module):
             sample: bool = True,
             **actor_kwargs
     ) -> Dict[str, Any]:
-        x, input_mask, available_actions_mask, subtask_embeddings = self.dict_input_layer(x)
-        base_out, input_mask = self.base_model((x, input_mask))
+        x, available_actions_mask, subtask_embeddings = self.dict_input_layer(x)
+        base_out = self.base_model(x)
         if subtask_embeddings is not None:
             subtask_embeddings = torch.repeat_interleave(subtask_embeddings, 2, dim=0)
         policy_logits, actions = self.actor(
@@ -213,7 +213,7 @@ class BasicActorCriticNetwork(nn.Module):
             sample=sample,
             **actor_kwargs
         )
-        baseline = self.baseline(self.baseline_base(base_out), input_mask, subtask_embeddings)
+        baseline = self.baseline(self.baseline_base(base_out), subtask_embeddings)
         return dict(
             actions=actions,
             policy_logits=policy_logits,
