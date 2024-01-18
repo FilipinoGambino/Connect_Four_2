@@ -59,11 +59,10 @@ class ConvEmbeddingInputLayer(nn.Module):
         emb_outs = dict()
         for key,op in self.keys_to_op.items():
             in_tensor = x[key]
-            print(key, in_tensor.shape)
             if op == "embedding":
-                emb_outs[key] = self.embeddings[key](in_tensor.to(torch.int32))
+                emb_outs[key] = self.embeddings[key](in_tensor)
             elif op == "continuous":
-                cont_outs.append(in_tensor.to(torch.float32))
+                cont_outs.append(in_tensor)
             else:
                 raise RuntimeError(f"Unknown operation: {op}")
         # print([emb_tensor.shape for emb_tensor in emb_outs.values()])

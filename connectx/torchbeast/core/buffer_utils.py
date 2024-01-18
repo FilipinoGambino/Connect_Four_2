@@ -4,8 +4,7 @@ import numpy as np
 import torch
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-from ...lux_gym.act_spaces import MAX_OVERLAPPING_ACTIONS
-from ...lux_gym.obs_spaces import BaseObsSpace
+from ...connectx_gym.obs_spaces import BaseObsSpace
 
 Buffers = List[Dict[str, Union[Dict, torch.Tensor]]]
 
@@ -111,8 +110,7 @@ def create_buffers(
     act_space = flags.act_space()
     for key, expanded_shape in act_space.get_action_space_expanded_shape().items():
         specs["policy_logits"][key] = dict(size=(t + 1, n, *expanded_shape), dtype=torch.float32)
-        final_actions_dim = min(expanded_shape[-1], MAX_OVERLAPPING_ACTIONS)
-        specs["actions"][key] = dict(size=(t + 1, n, *expanded_shape[:-1], final_actions_dim), dtype=torch.int64)
+        specs["actions"][key] = dict(size=(t + 1, n, *expanded_shape), dtype=torch.int64)
     buffers: Buffers = []
     for _ in range(flags.num_buffers):
         new_buffer = _create_buffers_from_specs(specs)

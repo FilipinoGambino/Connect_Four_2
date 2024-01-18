@@ -155,14 +155,8 @@ class PytorchEnv(gym.Wrapper):
     def _to_tensor(self, x: Union[Dict, np.ndarray]) -> Dict[str, Union[Dict, torch.Tensor]]:
         if isinstance(x, dict):
             return {key: self._to_tensor(val) for key, val in x.items()}
-        # TODO: I don't like this, but it'll do for now
         elif isinstance(x, np.ndarray):
-            try:
-                return torch.from_numpy(x).to(device=self.device)
-            except TypeError:
-                return x
-        else:
-            return x
+            return torch.from_numpy(x).to(device=self.device)
 
 
 class TensorflowEnv(gym.Wrapper):
