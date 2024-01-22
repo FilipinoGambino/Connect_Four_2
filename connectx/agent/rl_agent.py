@@ -93,7 +93,6 @@ class RLAgent:
         return actions
 
     def get_env_output(self):
-        print(self.action_placeholder)
         return self.env.step(self.action_placeholder)
 
     def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
