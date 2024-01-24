@@ -1,0 +1,4 @@
+total_steps: 10000.0
+batch_size: 8
+checkpoint_freq: 60.0
+num_actors: 1
