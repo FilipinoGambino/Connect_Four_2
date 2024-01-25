@@ -12,9 +12,13 @@ jobs:
         with:
           python-version: '^3.9'
 
-      - name: Install packages
-        shell: bash
-        run: pip install -r requirements.txt
+#      - name: Install packages
+#        shell: bash
+#        run: pip install -r requirements.txt
+      - name: Install the packages
+        uses: BSFishy/pip-action@v1
+        with:
+          packages: wandb kaggle
 
       - name: Log-in to W&B
         shell: bash
