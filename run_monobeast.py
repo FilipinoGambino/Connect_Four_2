@@ -97,6 +97,5 @@ def main(flags: DictConfig):
 
 
 if __name__ == "__main__":
-    wandb.login(key=os.environ['WANDB_API_KEY'])
     mp.set_start_method("spawn")
     main()

@@ -6,13 +6,17 @@ on:
 jobs:
   run-monobeast:
     runs-on: ubuntu-latest
-    env:
-      WANDB_KEY: ${{ secrets.WANDB_KEY }}
     steps:
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
           python-version: '^3.9'
 
-      - name: Run monobeast
-        run: python run_monobeast.py
+      - name: Log-in to W&B
+        shell: bash
+        env:
+          WANDB_API: ${{ secrets.WANDB_KEY }}
+        run: wandb login "$WANDB_API"
+
+      - name: Running monobeast
+        run: python /home/runner/work/Connect_Four_2/run_monobeast.py
