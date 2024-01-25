@@ -14,12 +14,16 @@ jobs:
         with:
           python-version: '^3.9'
 
+      - name: Show environment
+        run: |
+          env | grep EMAIL
+
       - name: Create python script
         run: |
           cat > showenv.py <<'EOF'
           import os
 
-          print(f'Email username is {os.environ.get("WANDB_KEY", "<unknown")}')
+          print(f'Your WandB API key is {os.environ.get("WANDB_KEY", "<unknown")}')
           EOF
 
       - name: Run python script
