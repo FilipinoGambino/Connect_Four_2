@@ -1,7 +1,7 @@
-name: Workflow with secrets
+name: Running Monobeast
 
 on:
-  workflow_dispatch:
+  push:
 
 jobs:
   run-monobeast:
@@ -10,9 +10,9 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.9'
+          python-version: '3.9.6'
 
-      - name: Check out repository code
+      - name: Checkout repository code
         uses: actions/checkout@v2
 
       - name: Install packages
