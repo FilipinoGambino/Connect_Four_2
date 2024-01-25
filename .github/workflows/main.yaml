@@ -30,4 +30,4 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Running monobeast
-        run: python /home/runner/work/Connect_Four_2/run_monobeast.py
+        run: python run_monobeast.py
