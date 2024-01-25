@@ -26,5 +26,8 @@ jobs:
           WANDB_API: ${{ secrets.WANDB_KEY }}
         run: wandb login "$WANDB_API"
 
+      - name: Check out repository code
+        uses: actions/checkout@v2
+
       - name: Running monobeast
         run: python /home/runner/work/Connect_Four_2/run_monobeast.py
