@@ -99,18 +99,17 @@ def create_buffers(
             raise NotImplementedError(f"{type(spec)} is not an accepted observation space.")
         obs_specs[key] = dict(size=(t + 1, n, *spec.shape), dtype=dtype)
 
+    act_space = flags.act_space()
+    shape = act_space.get_action_space().n
     specs = dict(
         obs=obs_specs,
         reward=dict(size=(t + 1, n, p), dtype=torch.float32),
         done=dict(size=(t + 1, n), dtype=torch.bool),
-        policy_logits={},
+        policy_logits=dict(size=(t + 1, n, shape), dtype=torch.float32),
         baseline=dict(size=(t + 1, n, p), dtype=torch.float32),
-        actions={},
+        actions=dict(size=(t + 1, n, shape), dtype=torch.int64),
     )
-    act_space = flags.act_space()
-    for key, expanded_shape in act_space.get_action_space_expanded_shape().items():
-        specs["policy_logits"][key] = dict(size=(t + 1, n, *expanded_shape), dtype=torch.float32)
-        specs["actions"][key] = dict(size=(t + 1, n, *expanded_shape), dtype=torch.int64)
+
     buffers: Buffers = []
     for _ in range(flags.num_buffers):
         new_buffer = _create_buffers_from_specs(specs)
