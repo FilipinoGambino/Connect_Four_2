@@ -62,7 +62,7 @@ def get_default_flags(flags: DictConfig) -> DictConfig:
     return OmegaConf.create(flags)
 
 
-@hydra.main(config_path="conf", config_name="start_config")
+@hydra.main(config_path="conf", config_name="new_beginnings")
 def main(flags: DictConfig):
     cli_conf = OmegaConf.from_cli()
     if Path("config.yaml").exists():
@@ -82,20 +82,22 @@ def main(flags: DictConfig):
     flags = get_default_flags(flags)
     logging.info(OmegaConf.to_yaml(flags, resolve=True))
     OmegaConf.save(flags, "config.yaml")
+    flags = flags_to_namespace(OmegaConf.to_container(flags))
     if not flags.disable_wandb:
         wandb.init(
-            config=vars(flags),
+            config=flags,
             project=flags.project,
             entity=flags.entity,
             group=flags.group,
             name=flags.name,
         )
 
-    flags = flags_to_namespace(OmegaConf.to_container(flags))
-    mp.set_sharing_strategy(flags.sharing_strategy)
+    # flags = flags_to_namespace(OmegaConf.to_container(flags))
+    # mp.set_sharing_strategy(flags.sharing_strategy)
     train(flags)
 
 
 if __name__ == "__main__":
-    mp.set_start_method("spawn")
+    wandb.login(key='0044667026088d514a021de2934e3ec09999a24a')
+    # mp.set_start_method("spawn")
     main()

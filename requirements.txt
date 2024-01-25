@@ -11,4 +11,4 @@ numpy==1.26.1
 omegaconf==2.3.0
 torch
 tqdm==4.66.1
-wandb==0.16.1
+wandb==0.16.2

@@ -24,7 +24,7 @@ class BaseObsSpace(ABC):
 # class FixedShapeObs(BaseObsSpace, ABC):
 #     pass
 
-class FixedShapeContinuousObs(BaseObsSpace, ABC):
+class BasicObsSpace(BaseObsSpace, ABC):
     def get_obs_spec(
             self,
             board_dims: Tuple[int, int] = BOARD_SIZE
@@ -40,14 +40,14 @@ class FixedShapeContinuousObs(BaseObsSpace, ABC):
         })
 
     def wrap_env(self, env) -> gym.Wrapper:
-        return _FixedShapeContinuousObsWrapper(env)
+        return _BasicObsSpaceWrapper(env)
 
 
-class _FixedShapeContinuousObsWrapper(gym.Wrapper):
+class _BasicObsSpaceWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env):
-        super(_FixedShapeContinuousObsWrapper, self).__init__(env)
+        super(_BasicObsSpaceWrapper, self).__init__(env)
         self._empty_obs = {}
-        for key, spec in FixedShapeContinuousObs().get_obs_spec().spaces.items():
+        for key, spec in BasicObsSpace().get_obs_spec().spaces.items():
             if isinstance(spec, gym.spaces.MultiBinary):
                 self._empty_obs[key] = np.zeros(spec.shape, dtype=np.int64)
             elif isinstance(spec, gym.spaces.Box):
