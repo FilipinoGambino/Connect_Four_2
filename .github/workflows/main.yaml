@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  show-secrets:
+  run-monobeast:
     runs-on: ubuntu-latest
     env:
       WANDB_KEY: ${{ secrets.WANDB_KEY }}
