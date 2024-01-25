@@ -1,0 +1,27 @@
+name: Workflow with secrets
+
+on:
+  workflow_dispatch:
+
+jobs:
+  show-secrets:
+    runs-on: ubuntu-latest
+    env:
+      WANDB_KEY: ${{ secrets.WANDB_KEY }}
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '^3.9'
+
+      - name: Create python script
+        run: |
+          cat > showenv.py <<'EOF'
+          import os
+
+          print(f'Email username is {os.environ.get("WANDB_KEY", "<unknown")}')
+          EOF
+
+      - name: Run python script
+        run: |
+          python showenv.py
