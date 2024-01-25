@@ -12,6 +12,10 @@ jobs:
         with:
           python-version: '^3.9'
 
+      - name: Install packages
+        shell: bash
+        run: pip install -r requirements
+
       - name: Log-in to W&B
         shell: bash
         env:
