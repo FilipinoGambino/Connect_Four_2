@@ -16,7 +16,7 @@ jobs:
 
       - name: Show environment
         run: |
-          env | grep EMAIL
+          env
 
       - name: Create python script
         run: |
