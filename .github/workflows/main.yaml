@@ -7,27 +7,23 @@ jobs:
   run-monobeast:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.9.6'
+        - uses: actions/checkout@v4
+        - uses: actions/setup-python@v5
+          with:
+            python-version: '3.9'
+            cache: 'pip' # caching pip dependencies
+        - run: pip install -r requirements.txt
 
-      - name: Checkout repository code
-        uses: actions/checkout@v2
+#        - name: Install the packages
+#          uses: BSFishy/pip-action@v1
+#          with:
+#            packages: wandb kaggle
 
-      - name: Install packages
-        shell: bash
-        run: pip install -r requirements.txt
-#      - name: Install the packages
-#        uses: BSFishy/pip-action@v1
-#        with:
-#          packages: wandb kaggle
+        - name: Log-in to W&B
+          shell: bash
+          env:
+            WANDB_API: ${{ secrets.WANDB_KEY }}
+          run: wandb login "$WANDB_API"
 
-      - name: Log-in to W&B
-        shell: bash
-        env:
-          WANDB_API: ${{ secrets.WANDB_KEY }}
-        run: wandb login "$WANDB_API"
-
-      - name: Running monobeast
-        run: python run_monobeast.py
+        - name: Running monobeast
+          run: python run_monobeast.py
