@@ -12,6 +12,9 @@ jobs:
         with:
           python-version: '^3.9'
 
+      - name: Check out repository code
+        uses: actions/checkout@v2
+        
       - name: Install packages
         shell: bash
         run: pip install -r requirements.txt
@@ -25,9 +28,6 @@ jobs:
         env:
           WANDB_API: ${{ secrets.WANDB_KEY }}
         run: wandb login "$WANDB_API"
-
-      - name: Check out repository code
-        uses: actions/checkout@v2
 
       - name: Running monobeast
         run: python run_monobeast.py
