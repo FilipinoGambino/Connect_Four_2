@@ -44,6 +44,9 @@ class ConnectFour(gym.Env):
 
     def step(self, action):
         obs, reward, done, _ = self.trainer.step(action)
+        self.info.append(dict(actions=action,
+                              reward=reward))
+
         return obs, reward, done, self.info
 
     def process_actions(self, logits: np.ndarray) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:

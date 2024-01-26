@@ -1,7 +1,7 @@
 import gym
 import torch
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
 
 from kaggle_environments.core import Environment, make
 from typing import Dict, List, NoReturn, Optional, Union, Tuple
@@ -18,7 +18,7 @@ class LoggingEnv(gym.Wrapper):
         self.reward_space = reward_space
         self.vals_peak = {}
         self.reward_sums = [0., 0.]
-        self.actions_distributions = {}
+        # self.actions_distributions = {}
 
     def info(self, info: Dict[str, np.ndarray], rewards: List[int]) -> Dict[str, np.ndarray]:
         info[-1]["rewards"] = rewards
@@ -28,9 +28,9 @@ class LoggingEnv(gym.Wrapper):
         obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
         # self._reset_peak_vals()
         self.reward_sums = [0., 0.]
-        self.actions_distributions = {
-            key: 0. for key in self.actions_distributions.keys()
-        }
+        # self.actions_distributions = {
+        #     key: 0. for key in self.actions_distributions.keys()
+        # }
         return obs, reward, done, self.info(info, self.reward_sums)
 
     def step(self, action: Dict[str, np.ndarray]):
