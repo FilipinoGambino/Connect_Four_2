@@ -180,10 +180,10 @@ def act(
         timings = prof.Timings()
 
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
-        if flags.seed is not None:
-            env.seed(flags.seed + actor_index * flags.n_actor_envs)
-        else:
-            env.seed()
+        # if flags.seed is not None:
+        #     env.seed(flags.seed + actor_index * flags.n_actor_envs)
+        # else:
+        #     env.seed()
         env_output = env.reset(force=True)
         agent_output = actor_model(env_output)
         while True:

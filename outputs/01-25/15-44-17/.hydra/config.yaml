@@ -1,9 +1,0 @@
-name: null
-project: ConnectX
-entity: filipinogambino
-group: debug
-total_steps: 10000.0
-batch_size: 8
-checkpoint_freq: 60.0
-num_actors: 1
-n_actor_envs: 2

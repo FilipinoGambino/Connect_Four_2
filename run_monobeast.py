@@ -62,7 +62,7 @@ def get_default_flags(flags: DictConfig) -> DictConfig:
     return OmegaConf.create(flags)
 
 
-@hydra.main(config_path="conf", config_name="new_beginnings")
+@hydra.main(config_path="conf", config_name="new_beginnings", version_base=None)
 def main(flags: DictConfig):
     cli_conf = OmegaConf.from_cli()
     if Path("config.yaml").exists():
@@ -98,6 +98,6 @@ def main(flags: DictConfig):
 
 
 if __name__ == "__main__":
-    wandb.login(key='0044667026088d514a021de2934e3ec09999a24a')
+    # wandb.login(key='0044667026088d514a021de2934e3ec09999a24a')
     # mp.set_start_method("spawn")
     main()

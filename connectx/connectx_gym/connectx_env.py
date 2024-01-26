@@ -37,15 +37,14 @@ class ConnectFour(gym.Env):
 
     def reset(self, **kwargs):
         obs = self.trainer.reset()
-        self.info = []
+        self.info = dict(reward=0)
         reward = 0
         done = False
         return obs, reward, done, self.info
 
     def step(self, action):
         obs, reward, done, _ = self.trainer.step(action)
-        self.info.append(dict(actions=action,
-                              reward=reward))
+        self.info = dict(actions=action, reward=reward)
 
         return obs, reward, done, self.info
 
@@ -75,3 +74,7 @@ class ConnectFour(gym.Env):
 
     def render(self, **kwargs):
         self.env.render(**kwargs)
+
+    @property
+    def turn(self):
+        return self.env.state[0]['observation']['step']

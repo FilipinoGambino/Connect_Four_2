@@ -209,7 +209,7 @@ class BasicActorCriticNetwork(nn.Module):
             subtask_embeddings = torch.repeat_interleave(subtask_embeddings, 2, dim=0)
         policy_logits, actions = self.actor(
             self.actor_base(base_out),
-            available_actions_mask=available_actions_mask,
+            # available_actions_mask=available_actions_mask,
             sample=sample,
             **actor_kwargs
         )

@@ -18,7 +18,9 @@ class AttnVector(nn.Module):
         self.w = nn.Linear(in_channels, in_channels, bias=bias)
 
     def forward(self, x: torch.Tensor):
+        x = x.permute([0,2,3,1])
         shape = x.shape[:-1]
+
         out = self.w(x)
 
         out = out.view(*shape, self.heads, self.qkv_dim)
@@ -48,15 +50,12 @@ class MHABlock(nn.Module):
 
         self.merge_fc = nn.Linear(dim, 1)
 
-    def forward(self, x, mask):
+    def forward(self, x):
         query = self.q(x)
         key = self.k(x).mT
         value = self.v(x)
 
         weights = torch.einsum('bhwnd, bxydn -> bnhwxy', query, key)
-
-        if mask is not None:
-            raise NotImplementedError
 
         weights = self.drop(weights)
         weights *= self.scale
@@ -101,11 +100,10 @@ class ViTBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        input_mask = x[0]
         identity = x
-        x = self.mhsa(self.norm1(x), input_mask)
+        x = self.mhsa(self.norm1(x))
         x = x + identity
-        return (self.mlp(self.norm2(x)) + x) * input_mask
+        return self.mlp(self.norm2(x)) + x
 
 
 # if __name__=="__main__":

@@ -32,11 +32,11 @@ class BasicObsSpace(BaseObsSpace, ABC):
         x = board_dims[0]
         y = board_dims[1]
         return gym.spaces.Dict({
-            "filled_cells": gym.spaces.MultiBinary(x * y),
-            "empty_cells": gym.spaces.MultiBinary(x * y),
-            "p1_cells": gym.spaces.MultiBinary(x * y),
-            "p2_cells": gym.spaces.MultiBinary(x * y),
-            "turn": gym.spaces.Box(low=0, high=1, shape=[1]),
+            "filled_cells": gym.spaces.MultiBinary((1, 2, x, y)),
+            "empty_cells": gym.spaces.MultiBinary((1, 2, x, y)),
+            "p1_cells": gym.spaces.MultiBinary((1, 2, x, y)),
+            "p2_cells": gym.spaces.MultiBinary((1, 2, x, y)),
+            "turn": gym.spaces.Box(low=0, high=1, shape=[1,1]),
         })
 
     def wrap_env(self, env) -> gym.Wrapper:
@@ -75,6 +75,6 @@ class _BasicObsSpaceWrapper(gym.Wrapper):
             "empty_cells": np.where(board == 0, 1, 0),
             "p1_cells": np.where(board == p1_mark, 1, 0),
             "p2_cells": np.where(board == p2_mark, 1, 0),
-            "turn": np.full_like(board, fill_value=norm_step, dtype=float),
+            "turn": np.full_like(board, fill_value=norm_step, dtype=np.float32),
         }
         return obs

@@ -11,7 +11,7 @@ class DictInputLayer(nn.Module):
             x: Dict[str, Union[Dict, torch.Tensor]]
     ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
         return (x["obs"],
-                x["info"]["available_actions_mask"],
+                x["info"].get("available_actions_mask", None),
                 x["info"].get("subtask_embeddings", None))
 
 class ConvEmbeddingInputLayer(nn.Module):
@@ -33,7 +33,7 @@ class ConvEmbeddingInputLayer(nn.Module):
                 n_embeddings = 2
                 self.keys_to_op[key] = "embedding"
                 embeddings[key] = nn.Embedding(n_embeddings, embedding_dim)
-                emb_channels += n_embeddings
+                emb_channels += embedding_dim
             elif isinstance(val, gym.spaces.Box):
                 cont_channels += np.prod(val.shape[:2])
                 self.keys_to_op[key] = "continuous"
@@ -41,6 +41,7 @@ class ConvEmbeddingInputLayer(nn.Module):
                 raise NotImplementedError(f"{val} is not an accepted observation space.")
 
         self.embeddings = nn.ModuleDict(embeddings)
+
         cont_embs = [
             nn.Conv2d(cont_channels, out_dim, (1,1)),
             activation()
@@ -49,6 +50,7 @@ class ConvEmbeddingInputLayer(nn.Module):
             nn.Conv2d(emb_channels, out_dim, (1,1)),
             activation()
         ]
+
         merger_layers = nn.Conv2d(out_dim * 2, out_dim, (1, 1))
         self.continuous_space_embedding = nn.Sequential(*cont_embs)
         self.embedding_merger = nn.Sequential(*emb_merge)
@@ -60,13 +62,14 @@ class ConvEmbeddingInputLayer(nn.Module):
         for key,op in self.keys_to_op.items():
             in_tensor = x[key]
             if op == "embedding":
-                emb_outs[key] = self.embeddings[key](in_tensor)
+                out = self.embeddings[key](in_tensor)
+                emb_outs[key] = out.permute([0,3,1,2])
             elif op == "continuous":
                 cont_outs.append(in_tensor)
             else:
                 raise RuntimeError(f"Unknown operation: {op}")
-        # print([emb_tensor.shape for emb_tensor in emb_outs.values()])
-        continuous_outs = self.continuous_space_embedding(torch.cat(cont_outs, dim=1))
+
+        continuous_outs = self.continuous_space_embedding(torch.cat(cont_outs, dim=0).unsqueeze(1))
         embedding_outs = self.embedding_merger(torch.cat([emb_tensor for emb_tensor in emb_outs.values()], dim=1))
         merged_outs = self.merger(torch.cat([continuous_outs, embedding_outs], dim=1))
         return merged_outs

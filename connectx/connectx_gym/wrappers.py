@@ -1,6 +1,7 @@
 import gym
 import torch
 import numpy as np
+import copy
 # import tensorflow as tf
 
 from kaggle_environments.core import Environment, make
@@ -17,21 +18,28 @@ class LoggingEnv(gym.Wrapper):
         super(LoggingEnv, self).__init__(env)
         self.reward_space = reward_space
         self.vals_peak = {}
-        self.reward_sums = [0., 0.]
-        # self.actions_distributions = {}
+        self.reward_sum = [0., 0.]
 
     def info(self, info: Dict[str, np.ndarray], rewards: List[int]) -> Dict[str, np.ndarray]:
-        info[-1]["rewards"] = rewards
+        info = copy.copy(info)
+        turn = self.env.unwrapped.turn
+        logs = dict(step=turn)
+
+        self.reward_sum[turn % 2] = info["reward"] + self.reward_sum[turn % 2]
+        logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
+        logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
+        logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
+
+
+        info.update({f"LOGGING_{key}": np.array(val, dtype=np.float32) for key, val in logs.items()})
+        # Add any additional info from the reward space
+        info.update(self.reward_space.get_info())
         return info
 
     def reset(self, **kwargs):
         obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
-        # self._reset_peak_vals()
-        self.reward_sums = [0., 0.]
-        # self.actions_distributions = {
-        #     key: 0. for key in self.actions_distributions.keys()
-        # }
-        return obs, reward, done, self.info(info, self.reward_sums)
+        self.reward_sum = [0., 0.]
+        return obs, reward, done, self.info(info, reward)
 
     def step(self, action: Dict[str, np.ndarray]):
         obs, reward, done, info = super(LoggingEnv, self).step(action)
@@ -112,11 +120,11 @@ class VecEnv(gym.Env):
     def close(self):
         return [env.close() for env in self.envs]
 
-    def seed(self, seed: Optional[int] = None) -> list:
-        if seed is not None:
-            return [env.seed(seed + i) for i, env in enumerate(self.envs)]
-        else:
-            return [env.seed(seed) for i, env in enumerate(self.envs)]
+    # def seed(self, seed: Optional[int] = None) -> list:
+    #     if seed is not None:
+    #         return [env.seed(seed + i) for i, env in enumerate(self.envs)]
+    #     else:
+    #         return [env.seed(seed) for i, env in enumerate(self.envs)]
 
     @property
     def unwrapped(self) -> List[gym.Env]:

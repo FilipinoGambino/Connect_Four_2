@@ -20,13 +20,13 @@ total_steps: 1e4
 batch_size: 8
 checkpoint_freq: 60.
 num_actors: 1
-n_actor_envs: 1
+n_actor_envs: 2
 unroll_length: 42
 player_id: 0
 seed: 42
 model_arch: mha_model
-embedding_dim: 128
-hidden_dim: 256
+embedding_dim: 32
+hidden_dim: 128
 n_heads: 4
 n_blocks: 1
 device: cpu
@@ -59,7 +59,7 @@ reduction: sum
 # MISCELLANEOUS params
 actor_device: cpu
 learner_device: cpu
-disable_wandb: False
+disable_wandb: True
 model_log_freq: 100
 # file_descriptor or file_system
 sharing_strategy: file_descriptor
