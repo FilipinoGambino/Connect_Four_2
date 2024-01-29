@@ -37,8 +37,9 @@ class DictActor(nn.Module):
         """
 
         b, _, h, w = x.shape
-
+        print(x.shape)
         logits = self.actor(x).view(b // 2, 2, self.n_actions, h, w)
+        print(logits.shape)
         # Move the logits dimension to the end and swap the player and channel dimensions
         logits = logits.permute(0, 1, 3, 4, 2).contiguous()
         # In case all actions are masked, unmask all actions
@@ -51,7 +52,7 @@ class DictActor(nn.Module):
             torch.ones_like(aam_new_type),
             aam_new_type.to(dtype=torch.int64)
         ).to(orig_dtype)
-        assert logits.shape == aam_filled.shape
+        assert logits.shape == aam_filled.shape, f"logits:{logits.shape} aam:{aam_filled.shape}"
         logits = logits + torch.where(
             aam_filled,
             torch.zeros_like(logits),
@@ -207,9 +208,10 @@ class BasicActorCriticNetwork(nn.Module):
         base_out = self.base_model(x)
         if subtask_embeddings is not None:
             subtask_embeddings = torch.repeat_interleave(subtask_embeddings, 2, dim=0)
+
         policy_logits, actions = self.actor(
             self.actor_base(base_out),
-            # available_actions_mask=available_actions_mask,
+            available_actions_mask=available_actions_mask,
             sample=sample,
             **actor_kwargs
         )

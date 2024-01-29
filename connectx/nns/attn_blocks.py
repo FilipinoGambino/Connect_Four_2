@@ -62,9 +62,8 @@ class MHABlock(nn.Module):
         weights = F.softmax(weights, dim=-1)
 
         attn = torch.einsum('bnhwxy, bxynd -> bhwnd', weights, value)
-        attn = torch.flatten(attn, start_dim=-2, end_dim=-1)
-
-        attn = self.merge_fc(attn)
+        attn = torch.flatten(attn, start_dim=-2, end_dim=-1).permute([0,3,1,2])
+        # attn = self.merge_fc(attn)
 
         return attn
 

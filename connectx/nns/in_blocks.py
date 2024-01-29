@@ -11,7 +11,7 @@ class DictInputLayer(nn.Module):
             x: Dict[str, Union[Dict, torch.Tensor]]
     ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
         return (x["obs"],
-                x["info"].get("available_actions_mask", None),
+                x["info"]["available_actions_mask"],
                 x["info"].get("subtask_embeddings", None))
 
 class ConvEmbeddingInputLayer(nn.Module):

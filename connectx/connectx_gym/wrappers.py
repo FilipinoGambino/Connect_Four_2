@@ -101,7 +101,7 @@ class VecEnv(gym.Env):
             self.last_outs = [env.reset(**kwargs) for env in self.envs]
             return VecEnv._vectorize_env_outs(self.last_outs)
         for i, env in enumerate(self.envs):
-            print(f"{i}", end=' ')
+            print(f"wrappers.py last_out {i}:", end=' ')
             print(self.last_outs[i])
             # Check if env finished
             if self.last_outs[i][2]:

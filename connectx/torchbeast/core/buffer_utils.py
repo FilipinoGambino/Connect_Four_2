@@ -115,5 +115,4 @@ def create_buffers(
         new_buffer = _create_buffers_from_specs(specs)
         new_buffer["info"] = _create_buffers_like(example_info, t + 1)
         buffers.append(new_buffer)
-    print(f"these are my buffers:\n{len(buffers)}")
     return buffers

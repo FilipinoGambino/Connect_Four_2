@@ -33,19 +33,19 @@ class ConnectFour(gym.Env):
         self.action_space = act_space
         self.obs_space = obs_space
         self.default_reward_space = GameResultReward()
-        self.info = []
+        self.info = dict()
 
     def reset(self, **kwargs):
         obs = self.trainer.reset()
-        self.info = dict(reward=0)
         reward = 0
         done = False
+        self._update(obs, reward)
+
         return obs, reward, done, self.info
 
     def step(self, action):
         obs, reward, done, _ = self.trainer.step(action)
-        self.info = dict(actions=action, reward=reward)
-
+        self._update(obs, reward, action)
         return obs, reward, done, self.info
 
     def process_actions(self, logits: np.ndarray) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
@@ -61,7 +61,7 @@ class ConnectFour(gym.Env):
         valid_action_probs = softmax(valid_action_logits)
         action = np.random.choice(BOARD_SIZE[1], p=valid_action_probs)
 
-        self.info.append(
+        self.info.update(
             dict(
                 logits=logits,
                 masked_logits=valid_action_logits,
@@ -71,6 +71,15 @@ class ConnectFour(gym.Env):
             )
         )
         return action
+
+    def _update(self, obs, reward, action: Optional= -1):
+        obs_array = np.array(obs['board']).reshape((1,*BOARD_SIZE))
+
+        self.info = dict(
+            action=action,
+            reward=reward,
+            available_actions_mask=self.action_space.get_available_actions_mask(obs_array),
+        )
 
     def render(self, **kwargs):
         self.env.render(**kwargs)

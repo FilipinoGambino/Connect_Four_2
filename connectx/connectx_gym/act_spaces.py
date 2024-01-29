@@ -51,8 +51,8 @@ class BasicActionSpace(BaseActSpace):
         return valid_actions
 
     @staticmethod
-    def get_available_actions_mask(game_state: torch.Tensor) -> Dict[str, np.ndarray]:
-        available_actions_mask = np.array(game_state.all(axis=1)).reshape([1,COLUMNS])
+    def get_available_actions_mask(game_state: np.ndarray) -> Dict[str, np.ndarray]:
+        available_actions_mask = np.array(game_state.all(axis=1), dtype=bool).reshape([1,COLUMNS])
         return available_actions_mask
 
 
