@@ -21,7 +21,7 @@ class DictActor(nn.Module):
 
         self.actor = nn.Conv2d(
             in_channels,
-            self.n_actions,
+            1,
             (1, 1)
         )
 
@@ -37,14 +37,14 @@ class DictActor(nn.Module):
         """
 
         b, _, h, w = x.shape
-        print(x.shape)
-        logits = self.actor(x).view(b // 2, 2, self.n_actions, h, w)
-        print(logits.shape)
+        logits = self.actor(x)
+        # logits = logits.view(b // 2, 2, h, w)
         # Move the logits dimension to the end and swap the player and channel dimensions
-        logits = logits.permute(0, 1, 3, 4, 2).contiguous()
+        # logits = logits.permute(0, 1, 3, 4, 2).contiguous()
         # In case all actions are masked, unmask all actions
         # We first have to cast it to an int tensor to avoid errors in kaggle environment
-        aam = available_actions_mask
+        aam = available_actions_mask.unsqueeze(-2)
+        aam = aam.repeat_interleave(repeats=6, dim=-2)
         orig_dtype = aam.dtype
         aam_new_type = aam.to(dtype=torch.int64)
         aam_filled = torch.where(
@@ -59,7 +59,9 @@ class DictActor(nn.Module):
             torch.zeros_like(logits) + float("-inf")
         )
         actions = DictActor.logits_to_actions(logits.view(-1, self.n_actions), sample)
+        print(f"actions:\n{actions.shape}")
         actions_out = actions.view(*logits.shape[:-1], -1)
+        print(f"actions:\n{actions_out.shape}")
         return logits, actions_out
 
     @staticmethod
@@ -120,7 +122,10 @@ class BaselineLayer(nn.Module):
             self.reward_min *= reward_space_expanded
             self.reward_max *= reward_space_expanded
 
-    def forward(self, x: torch.Tensor, input_mask: torch.Tensor, value_head_idxs: Optional[torch.Tensor]) -> torch.Tensor:
+    def forward(self, x: torch.Tensor,
+                input_mask: Optional[torch.Tensor]=None,
+                value_head_idxs: Optional[torch.Tensor]=None
+                ) -> torch.Tensor:
         """
         Expects an input of shape b * 2, n_channels, x, y
         Returns an output of shape b, 2
@@ -215,7 +220,7 @@ class BasicActorCriticNetwork(nn.Module):
             sample=sample,
             **actor_kwargs
         )
-        baseline = self.baseline(self.baseline_base(base_out), subtask_embeddings)
+        baseline = self.baseline(self.baseline_base(base_out))
         return dict(
             actions=actions,
             policy_logits=policy_logits,

@@ -14,6 +14,8 @@ def fill_buffers_inplace(buffers: Union[Dict, torch.Tensor], fill_vals: Union[Di
         for key, val in copy(fill_vals).items():
             fill_buffers_inplace(buffers[key], val, step)
     else:
+        print(fill_vals)
+        print(fill_vals.shape, buffers.shape)
         buffers[step, ...] = fill_vals[:]
 
 
@@ -100,14 +102,14 @@ def create_buffers(
         obs_specs[key] = dict(size=(t + 1, n, *spec.shape), dtype=dtype)
 
     act_space = flags.act_space()
-    shape = act_space.get_action_space().n
+    n_actions = act_space.get_action_space().n
     specs = dict(
         obs=obs_specs,
         reward=dict(size=(t + 1, n, p), dtype=torch.float32),
         done=dict(size=(t + 1, n), dtype=torch.bool),
-        policy_logits=dict(size=(t + 1, n, shape), dtype=torch.float32),
+        policy_logits=dict(size=(t + 1, n, n_actions), dtype=torch.float32),
         baseline=dict(size=(t + 1, n, p), dtype=torch.float32),
-        actions=dict(size=(t + 1, n, shape), dtype=torch.int64),
+        actions=dict(size=(t + 1, n, n_actions), dtype=torch.int64),
     )
 
     buffers: Buffers = []
