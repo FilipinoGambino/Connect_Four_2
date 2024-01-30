@@ -14,8 +14,7 @@ def fill_buffers_inplace(buffers: Union[Dict, torch.Tensor], fill_vals: Union[Di
         for key, val in copy(fill_vals).items():
             fill_buffers_inplace(buffers[key], val, step)
     else:
-        print(fill_vals)
-        print(fill_vals.shape, buffers.shape)
+        print(f"fill_vals shape: {fill_vals.shape} | buffer step shape: {buffers[step].shape}")
         buffers[step, ...] = fill_vals[:]
 
 

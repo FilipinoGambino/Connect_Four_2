@@ -24,6 +24,11 @@ class DictActor(nn.Module):
             1,
             (1, 1)
         )
+        self.row_actor = nn.Conv2d(
+            BOARD_SIZE[0],
+            1,
+            (1,1)
+        )
 
     def forward(
             self,
@@ -37,14 +42,20 @@ class DictActor(nn.Module):
         """
 
         b, _, h, w = x.shape
+        print(f"input: {x.shape}")
         logits = self.actor(x)
+        print(f"logits: {logits.shape}")
+        logits = logits.view(b,h,1,w)
+        print(f"logits: {logits.shape}")
+        logits = self.row_actor(logits)
+        print(f"logits: {logits.shape}")
         # logits = logits.view(b // 2, 2, h, w)
         # Move the logits dimension to the end and swap the player and channel dimensions
         # logits = logits.permute(0, 1, 3, 4, 2).contiguous()
         # In case all actions are masked, unmask all actions
         # We first have to cast it to an int tensor to avoid errors in kaggle environment
         aam = available_actions_mask.unsqueeze(-2)
-        aam = aam.repeat_interleave(repeats=6, dim=-2)
+        # aam = aam.repeat_interleave(repeats=6, dim=-2)
         orig_dtype = aam.dtype
         aam_new_type = aam.to(dtype=torch.int64)
         aam_filled = torch.where(
@@ -59,9 +70,11 @@ class DictActor(nn.Module):
             torch.zeros_like(logits) + float("-inf")
         )
         actions = DictActor.logits_to_actions(logits.view(-1, self.n_actions), sample)
-        print(f"actions:\n{actions.shape}")
+        print(f"actions: {actions.shape}")
+        print(f"logits: {logits.shape}")
+        print(f"reshaped logits: {logits.view(-1, self.n_actions).shape}")
         actions_out = actions.view(*logits.shape[:-1], -1)
-        print(f"actions:\n{actions_out.shape}")
+        print(f"actions: {actions_out.shape}")
         return logits, actions_out
 
     @staticmethod
