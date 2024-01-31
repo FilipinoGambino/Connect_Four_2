@@ -5,6 +5,8 @@ import torch
 from torch import nn
 import numpy as np
 
+from ..utility_constants import BOARD_SIZE
+
 class DictInputLayer(nn.Module):
     @staticmethod
     def forward(
@@ -69,7 +71,11 @@ class ConvEmbeddingInputLayer(nn.Module):
             else:
                 raise RuntimeError(f"Unknown operation: {op}")
 
-        continuous_outs = self.continuous_space_embedding(torch.cat(cont_outs, dim=0).unsqueeze(1))
+        cont_outs = torch.cat(cont_outs, dim=0).unsqueeze(-1)
+
+        continuous_outs = self.continuous_space_embedding(cont_outs)
+        continuous_outs = continuous_outs.repeat(1,1,*BOARD_SIZE)
+
         embedding_outs = self.embedding_merger(torch.cat([emb_tensor for emb_tensor in emb_outs.values()], dim=1))
         merged_outs = self.merger(torch.cat([continuous_outs, embedding_outs], dim=1))
         return merged_outs

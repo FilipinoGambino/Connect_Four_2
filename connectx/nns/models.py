@@ -24,10 +24,9 @@ class DictActor(nn.Module):
             1,
             (1, 1)
         )
-        self.row_actor = nn.Conv2d(
+        self.row_actor = nn.Linear(
             BOARD_SIZE[0],
             1,
-            (1,1)
         )
 
     def forward(
@@ -42,40 +41,29 @@ class DictActor(nn.Module):
         """
 
         b, _, h, w = x.shape
-        print(f"input: {x.shape}")
         logits = self.actor(x)
-        print(f"logits: {logits.shape}")
-        logits = logits.view(b,h,1,w)
-        print(f"logits: {logits.shape}")
+        logits = logits.permute(0,1,3,2)
         logits = self.row_actor(logits)
-        print(f"logits: {logits.shape}")
+        logits = logits.permute(0,1,3,2).squeeze(-2)
+
         # logits = logits.view(b // 2, 2, h, w)
         # Move the logits dimension to the end and swap the player and channel dimensions
         # logits = logits.permute(0, 1, 3, 4, 2).contiguous()
         # In case all actions are masked, unmask all actions
         # We first have to cast it to an int tensor to avoid errors in kaggle environment
-        aam = available_actions_mask.unsqueeze(-2)
-        # aam = aam.repeat_interleave(repeats=6, dim=-2)
-        orig_dtype = aam.dtype
-        aam_new_type = aam.to(dtype=torch.int64)
-        aam_filled = torch.where(
-            (~aam).all(dim=-1, keepdim=True),
-            torch.ones_like(aam_new_type),
-            aam_new_type.to(dtype=torch.int64)
-        ).to(orig_dtype)
-        assert logits.shape == aam_filled.shape, f"logits:{logits.shape} aam:{aam_filled.shape}"
+
+        assert logits.shape == available_actions_mask.shape
         logits = logits + torch.where(
-            aam_filled,
-            torch.zeros_like(logits),
-            torch.zeros_like(logits) + float("-inf")
+            available_actions_mask,
+            torch.zeros_like(logits) + float("-inf"),
+            torch.zeros_like(logits)
         )
+
         actions = DictActor.logits_to_actions(logits.view(-1, self.n_actions), sample)
-        print(f"actions: {actions.shape}")
-        print(f"logits: {logits.shape}")
-        print(f"reshaped logits: {logits.view(-1, self.n_actions).shape}")
-        actions_out = actions.view(*logits.shape[:-1], -1)
-        print(f"actions: {actions_out.shape}")
-        return logits, actions_out
+
+        logits = logits.squeeze(-2)
+
+        return logits, actions
 
     @staticmethod
     @torch.no_grad()
@@ -153,7 +141,7 @@ class BaselineLayer(nn.Module):
         if self.multi_headed:
             x = self.linear(x, value_head_idxs.squeeze()).view(-1, 2)
         else:
-            x = self.linear(x).view(-1, 2)
+            x = self.linear(x)#.view(-1, 2)
         # Rescale to [0, 1], and then to the desired reward space
         x = self.activation(x)
         return x * (self.reward_max - self.reward_min) + self.reward_min
@@ -234,6 +222,11 @@ class BasicActorCriticNetwork(nn.Module):
             **actor_kwargs
         )
         baseline = self.baseline(self.baseline_base(base_out))
+        # print(f"------------------------------------------\n"
+        #       f"{actions.shape}  |  "
+        #       f"{policy_logits.shape}  |  "
+        #       f"{baseline.shape}\n"
+        #       f"------------------------------------------")
         return dict(
             actions=actions,
             policy_logits=policy_logits,

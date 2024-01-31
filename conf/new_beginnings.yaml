@@ -33,6 +33,7 @@ device: cpu
 rescale_value_input: False
 obs_space_kwargs: {}
 reward_space_kwargs: {}
+debug: True
 
 # Model params
 act_space: BasicActionSpace

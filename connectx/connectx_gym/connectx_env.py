@@ -37,7 +37,7 @@ class ConnectFour(gym.Env):
 
     def reset(self, **kwargs):
         obs = self.trainer.reset()
-        reward = 0
+        reward = 0.
         done = False
         self._update(obs, reward)
 
@@ -72,7 +72,7 @@ class ConnectFour(gym.Env):
         )
         return action
 
-    def _update(self, obs, reward, action: Optional= -1):
+    def _update(self, obs, reward, action=-1):
         obs_array = np.array(obs['board']).reshape((1,*BOARD_SIZE))
 
         self.info = dict(

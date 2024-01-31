@@ -24,8 +24,9 @@ class LoggingEnv(gym.Wrapper):
         info = copy.copy(info)
         turn = self.env.unwrapped.turn
         logs = dict(step=turn)
+        player = turn % 2
 
-        self.reward_sum[turn % 2] = info["reward"] + self.reward_sum[turn % 2]
+        self.reward_sum[player] = rewards[player] + self.reward_sum[player]
         logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
         logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
         logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
@@ -61,7 +62,7 @@ class RewardSpaceWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, rewards, done, info = super(RewardSpaceWrapper, self).reset(**kwargs)
-        return obs, rewards, done, info
+        return obs, *self._get_rewards_and_done(), info
 
     def step(self, action):
         obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
@@ -166,7 +167,6 @@ class PytorchEnv(gym.Wrapper):
         elif isinstance(x, np.ndarray):
             return torch.from_numpy(x).to(device=self.device)
 
-
 class TensorflowEnv(gym.Wrapper):
     def __init__(self, env: Union[gym.Env, VecEnv], device: torch.device = torch.device("cpu")):
         super(TensorflowEnv, self).__init__(env)
@@ -200,9 +200,7 @@ class DictEnv(gym.Wrapper):
         )
 
     def reset(self, **kwargs):
-        print("Resetting")
         return DictEnv._dict_env_out(super(DictEnv, self).reset(**kwargs))
 
     def step(self, action):
-        print("Stepping")
         return DictEnv._dict_env_out(super(DictEnv, self).step(action))

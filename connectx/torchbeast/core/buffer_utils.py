@@ -14,7 +14,6 @@ def fill_buffers_inplace(buffers: Union[Dict, torch.Tensor], fill_vals: Union[Di
         for key, val in copy(fill_vals).items():
             fill_buffers_inplace(buffers[key], val, step)
     else:
-        print(f"fill_vals shape: {fill_vals.shape} | buffer step shape: {buffers[step].shape}")
         buffers[step, ...] = fill_vals[:]
 
 
@@ -108,7 +107,7 @@ def create_buffers(
         done=dict(size=(t + 1, n), dtype=torch.bool),
         policy_logits=dict(size=(t + 1, n, n_actions), dtype=torch.float32),
         baseline=dict(size=(t + 1, n, p), dtype=torch.float32),
-        actions=dict(size=(t + 1, n, n_actions), dtype=torch.int64),
+        actions=dict(size=(t + 1, n, 1), dtype=torch.int64),
     )
 
     buffers: Buffers = []
