@@ -139,11 +139,12 @@ class BaselineLayer(nn.Module):
             x = torch.flatten(x, start_dim=-2, end_dim=-1).mean(dim=-1)
         # Project and reshape input
         if self.multi_headed:
-            x = self.linear(x, value_head_idxs.squeeze()).view(-1, 2)
+            x = self.linear(x, value_head_idxs.squeeze())
         else:
-            x = self.linear(x)#.view(-1, 2)
+            x = self.linear(x)
         # Rescale to [0, 1], and then to the desired reward space
         x = self.activation(x)
+
         return x * (self.reward_max - self.reward_min) + self.reward_min
 
 class BasicActorCriticNetwork(nn.Module):

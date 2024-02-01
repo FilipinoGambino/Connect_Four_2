@@ -14,7 +14,10 @@ def fill_buffers_inplace(buffers: Union[Dict, torch.Tensor], fill_vals: Union[Di
         for key, val in copy(fill_vals).items():
             fill_buffers_inplace(buffers[key], val, step)
     else:
-        buffers[step, ...] = fill_vals[:]
+        try:
+            buffers[step, ...] = fill_vals[:]
+        except Exception as e:
+            print(buffers[step].shape, fill_vals[:].shape, e)
 
 
 def stack_buffers(buffers: Buffers, dim: int) -> Dict[str, Union[Dict, torch.Tensor]]:
@@ -87,6 +90,7 @@ def create_buffers(
     t = flags.unroll_length
     n = flags.n_actor_envs
     p = 2
+
     obs_specs = {}
     for key, spec in obs_space.get_obs_spec().spaces.items():
         if isinstance(spec, gym.spaces.MultiBinary):
@@ -103,10 +107,10 @@ def create_buffers(
     n_actions = act_space.get_action_space().n
     specs = dict(
         obs=obs_specs,
-        reward=dict(size=(t + 1, n, p), dtype=torch.float32),
+        reward=dict(size=(t + 1, n, 1), dtype=torch.float32),
         done=dict(size=(t + 1, n), dtype=torch.bool),
         policy_logits=dict(size=(t + 1, n, n_actions), dtype=torch.float32),
-        baseline=dict(size=(t + 1, n, p), dtype=torch.float32),
+        baseline=dict(size=(t + 1, n, 1), dtype=torch.float32),
         actions=dict(size=(t + 1, n, 1), dtype=torch.int64),
     )
 

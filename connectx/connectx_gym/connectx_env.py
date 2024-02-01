@@ -23,13 +23,15 @@ class ConnectFour(gym.Env):
     ):
         super(ConnectFour, self).__init__()
         self.env = make("connectx", debug=True)
+        self.player_id = player_id
         players = ["negamax", "negamax"]
-        players[player_id-1] = None
+        players[player_id] = None
         self.trainer = self.env.train(players)
 
         self.rows = self.env.configuration.rows
         self.columns = self.env.configuration.columns
 
+        self.reward = 0.
         self.action_space = act_space
         self.obs_space = obs_space
         self.default_reward_space = GameResultReward()
@@ -37,16 +39,16 @@ class ConnectFour(gym.Env):
 
     def reset(self, **kwargs):
         obs = self.trainer.reset()
-        reward = 0.
+        self.reward = 0.
         done = False
-        self._update(obs, reward)
+        self._update(obs, self.reward)
 
-        return obs, reward, done, self.info
+        return obs, self.reward, done, self.info
 
     def step(self, action):
-        obs, reward, done, _ = self.trainer.step(action)
-        self._update(obs, reward, action)
-        return obs, reward, done, self.info
+        obs, self.reward, done, _ = self.trainer.step(action)
+        self._update(obs, self.reward, action)
+        return obs, self.reward, done, self.info
 
     def process_actions(self, logits: np.ndarray) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
         step = self.env.state[0]['observation']['step']

@@ -16,6 +16,7 @@ entity: filipinogambino
 group: debug
 
 # Parameters to overwrite
+use_mixed_precision: False
 total_steps: 1e4
 batch_size: 8
 checkpoint_freq: 60.
@@ -60,7 +61,7 @@ reduction: sum
 # MISCELLANEOUS params
 actor_device: cpu
 learner_device: cpu
-disable_wandb: True
+disable_wandb: false
 model_log_freq: 100
 # file_descriptor or file_system
 sharing_strategy: file_descriptor

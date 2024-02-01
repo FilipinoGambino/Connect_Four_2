@@ -60,14 +60,25 @@ class GameResultReward(FullGameRewardSpace):
         super(GameResultReward, self).__init__(**kwargs)
         self.early_stop = early_stop
 
-    def compute_rewards(self, game_state: Environment) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards(self, game_state: Environment) -> Tuple[float, bool]:
         if self.early_stop:
             raise NotImplementedError  # done = done or should_early_stop(game_state)
         done = game_state.done
         return self._compute_rewards(game_state, done), done
 
-    def _compute_rewards(self, game_state: Environment, done: bool) -> Tuple[float, float]:
+    def _compute_rewards(self, game_state: Environment, done: bool) -> float:
         if not done:
-            return 0., 0.
-        rewards = (game_state.state[0]['reward'], game_state.state[1]['reward'])
-        return rewards
+            return 0.
+        return game_state.reward
+
+    # def compute_rewards(self, game_state: Environment) -> Tuple[Tuple[float, float], bool]:
+    #     if self.early_stop:
+    #         raise NotImplementedError  # done = done or should_early_stop(game_state)
+    #     done = game_state.done
+    #     return self._compute_rewards(game_state, done), done
+    #
+    # def _compute_rewards(self, game_state: Environment, done: bool) -> Tuple[float, float]:
+    #     if not done:
+    #         return 0., 0.
+    #     rewards = (game_state.state[0]['reward'], game_state.state[1]['reward'])
+    #     return rewards

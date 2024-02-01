@@ -140,6 +140,7 @@ def from_importance_weights(
         for t in range(discounts.shape[0] - 1, -1, -1):
             acc = deltas[t] + discounts[t] * cs[t] * acc
             result.append(acc)
+
         result.reverse()
         vs_minus_v_xs = torch.stack(result)
 

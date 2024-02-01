@@ -1,7 +1,7 @@
 name: Running Monobeast
 
 on:
-  workflow_dispatch:
+  push:
 
 jobs:
   run-monobeast:

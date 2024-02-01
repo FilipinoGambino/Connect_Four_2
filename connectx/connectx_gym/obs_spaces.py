@@ -68,12 +68,12 @@ class _BasicObsSpaceWrapper(gym.Wrapper):
         board = np.array(observation['board'], dtype=np.float32).reshape((rows, cols))
         p1_mark = observation['mark']
         p2_mark = (p1_mark + 1) % 2
-        norm_step = observation['step'] / (rows * cols)
+        norm_turn = observation['step'] / (rows * cols)
         obs = {
             "filled_cells": np.where(board != 0, 1, 0),
             "empty_cells": np.where(board == 0, 1, 0),
             "p1_cells": np.where(board == p1_mark, 1, 0),
             "p2_cells": np.where(board == p2_mark, 1, 0),
-            "turn": np.full(shape=(1,1), fill_value=norm_step, dtype=np.float32),
+            "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
         }
         return obs

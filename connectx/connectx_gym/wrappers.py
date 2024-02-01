@@ -20,13 +20,12 @@ class LoggingEnv(gym.Wrapper):
         self.vals_peak = {}
         self.reward_sum = [0., 0.]
 
-    def info(self, info: Dict[str, np.ndarray], rewards: List[int]) -> Dict[str, np.ndarray]:
+    def info(self, info: Dict[str, np.ndarray], rewards: int) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
-        turn = self.env.unwrapped.turn
-        logs = dict(step=turn)
-        player = turn % 2
+        player = self.env.unwrapped.player_id
+        logs = dict(step=self.env.unwrapped.turn)
 
-        self.reward_sum[player] = rewards[player] + self.reward_sum[player]
+        self.reward_sum[player] = rewards + self.reward_sum[player]
         logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
         logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
         logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
@@ -40,11 +39,11 @@ class LoggingEnv(gym.Wrapper):
     def reset(self, **kwargs):
         obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
         self.reward_sum = [0., 0.]
-        return obs, reward, done, self.info(info, reward)
+        return obs, [reward], done, self.info(info, reward)
 
     def step(self, action: Dict[str, np.ndarray]):
         obs, reward, done, info = super(LoggingEnv, self).step(action)
-        return obs, reward, done, self.info(info, reward)
+        return obs, [reward], done, self.info(info, reward)
 
 
 class RewardSpaceWrapper(gym.Wrapper):
@@ -61,12 +60,15 @@ class RewardSpaceWrapper(gym.Wrapper):
         return rewards, done
 
     def reset(self, **kwargs):
-        obs, rewards, done, info = super(RewardSpaceWrapper, self).reset(**kwargs)
-        return obs, *self._get_rewards_and_done(), info
+        obs, reward, done, info = super(RewardSpaceWrapper, self).reset(**kwargs)
+        # return obs, *self._get_rewards_and_done(), info
+        return obs, reward, done, info
 
     def step(self, action):
-        obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
-        return obs, *self._get_rewards_and_done(), info
+        # obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
+        # return obs, *self._get_rewards_and_done(), info
+        obs, reward, done, info = super(RewardSpaceWrapper, self).step(action)
+        return obs, reward, done, info
 
 class VecEnv(gym.Env):
     def __init__(self, envs: List[gym.Env]):
@@ -102,8 +104,6 @@ class VecEnv(gym.Env):
             self.last_outs = [env.reset(**kwargs) for env in self.envs]
             return VecEnv._vectorize_env_outs(self.last_outs)
         for i, env in enumerate(self.envs):
-            print(f"wrappers.py last_out {i}:", end=' ')
-            print(self.last_outs[i])
             # Check if env finished
             if self.last_outs[i][2]:
                 # noinspection PyArgumentList
