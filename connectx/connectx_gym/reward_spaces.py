@@ -42,7 +42,7 @@ class FullGameRewardSpace(BaseRewardSpace):
         pass
 
     @abstractmethod
-    def _compute_rewards(self, game_state: dict, done: bool) -> Tuple[float, float]:
+    def _compute_rewards(self, game_state: dict) -> Tuple[float, float]:
         pass
 
 
@@ -50,10 +50,10 @@ class GameResultReward(FullGameRewardSpace):
     @staticmethod
     def get_reward_spec() -> RewardSpec:
         return RewardSpec(
-            reward_min=-1.,
-            reward_max=1.,
+            reward_min=-10.,
+            reward_max=10.,
             zero_sum=True,
-            only_once=True
+            only_once=False
         )
 
     def __init__(self, early_stop: bool = False, **kwargs):
@@ -63,12 +63,11 @@ class GameResultReward(FullGameRewardSpace):
     def compute_rewards(self, game_state: Environment) -> Tuple[float, bool]:
         if self.early_stop:
             raise NotImplementedError  # done = done or should_early_stop(game_state)
-        done = game_state.done
-        return self._compute_rewards(game_state, done), done
+        return self._compute_rewards(game_state), game_state.done
 
-    def _compute_rewards(self, game_state: Environment, done: bool) -> float:
-        if not done:
-            return 0.
+    def _compute_rewards(self, game_state: Environment) -> float:
+        if game_state.done:
+            return game_state.reward * 10.
         return game_state.reward
 
     # def compute_rewards(self, game_state: Environment) -> Tuple[Tuple[float, float], bool]:

@@ -1,6 +1,7 @@
 from kaggle_environments import make
 from typing import Dict, List, Optional, Tuple
 import gym
+import math
 import numpy as np
 from scipy.special import softmax
 
@@ -46,7 +47,8 @@ class ConnectFour(gym.Env):
         return obs, self.reward, done, self.info
 
     def step(self, action):
-        obs, self.reward, done, _ = self.trainer.step(action)
+        obs, _, done, _ = self.trainer.step(action)
+        self.reward = self.turn / math.prod(BOARD_SIZE)
         self._update(obs, self.reward, action)
         return obs, self.reward, done, self.info
 
