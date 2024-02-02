@@ -34,7 +34,6 @@ class ConnectFour(gym.Env):
 
         self.action_space = act_space
         self.obs_space = obs_space
-        self.default_reward_space = GameResultReward()
         self.info = dict()
 
     def reset(self, **kwargs):

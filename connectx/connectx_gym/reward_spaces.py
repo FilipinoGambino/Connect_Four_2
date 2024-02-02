@@ -6,7 +6,7 @@ import math
 from kaggle_environments.core import Environment
 import numpy as np
 
-from connectx_env import ConnectFour
+from .connectx_env import ConnectFour
 from ..utility_constants import BOARD_SIZE
 
 class RewardSpec(NamedTuple):
