@@ -25,7 +25,8 @@ class ConnectFour(gym.Env):
         super(ConnectFour, self).__init__()
         self.env = make("connectx", debug=True)
         self.player_id = player_id
-        players = ["negamax", "negamax"]
+        # players = ["negamax", "negamax"]
+        players = ["random", "random"]
         players[player_id] = None
         self.trainer = self.env.train(players)
 
