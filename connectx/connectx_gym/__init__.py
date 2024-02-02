@@ -40,7 +40,6 @@ def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed
         envs.append(env)
     env = VecEnv(envs)
     env = PytorchEnv(env, device)
-    # env = TensorflowEnv(env, device)
     env = DictEnv(env)
     return env
 

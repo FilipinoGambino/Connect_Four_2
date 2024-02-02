@@ -451,39 +451,6 @@ def learn(
             assert len(last_lr) == 1, 'Logging per-parameter LR still needs support'
             last_lr = last_lr[0]
 
-            '''
-            action_distributions_flat = {
-                key[16:]: val[batch["done"]][~val[batch["done"]].isnan()].sum().item()
-                for key, val in batch["info"].items()
-                if key.startswith("LOGGING_") and "ACTIONS_" in key
-            }
-            action_distributions = {space: {} for space in ACTION_MEANINGS.keys()}
-            for flat_name, n in action_distributions_flat.items():
-                space, meaning = flat_name.split(".")
-                action_distributions[space][meaning] = n
-            action_distributions_aggregated = {}
-            for space, dist in action_distributions.items():
-                if space == "city_tile":
-                    action_distributions_aggregated[space] = dist
-                elif space in ("cart", "worker"):
-                    aggregated = {
-                        a: n for a, n in dist.items() if "TRANSFER" not in a and "MOVE" not in a
-                    }
-                    aggregated["TRANSFER"] = sum({a: n for a, n in dist.items() if "TRANSFER" in a}.values())
-                    aggregated["MOVE"] = sum({a: n for a, n in dist.items() if "MOVE" in a}.values())
-                    action_distributions_aggregated[space] = aggregated
-                else:
-                    raise RuntimeError(f"Unrecognized action_space: {space}")
-                n_actions = sum(action_distributions_aggregated[space].values())
-                if n_actions == 0:
-                    action_distributions_aggregated[space] = {
-                        key: float("nan") for key in action_distributions_aggregated[space].keys()
-                    }
-                else:
-                    action_distributions_aggregated[space] = {
-                        key: val / n_actions for key, val in action_distributions_aggregated[space].items()
-                    }
-            '''
             total_games_played += batch["done"].sum().item()
 
             stats = {
@@ -497,25 +464,17 @@ def learn(
                     "vtrace_pg_loss": vtrace_pg_loss.detach().item(),
                     "upgo_pg_loss": upgo_pg_loss.detach().item(),
                     "baseline_loss": baseline_loss.detach().item(),
-                    "teacher_kl_loss": teacher_kl_loss.detach().item(),
-                    "teacher_baseline_loss": teacher_baseline_loss.detach().item(),
+                    # "teacher_kl_loss": teacher_kl_loss.detach().item(),
+                    # "teacher_baseline_loss": teacher_baseline_loss.detach().item(),
                     "entropy_loss": entropy_loss.detach().item(),
                     "total_loss": total_loss.detach().item(),
                 },
-                # "Entropy": {
-                #     "overall": sum(e for e in entropies.values() if not math.isnan(e)),
-                #     **entropies
-                # },
-                # "Teacher_KL_Divergence": {
-                #     "overall": sum(tkld for tkld in teacher_kl_losses.values() if not math.isnan(tkld)),
-                #     **teacher_kl_losses
-                # },
                 "Entropy": {
                     "overall": entropies,
                 },
-                "Teacher_KL_Divergence": {
-                    "overall": teacher_kl_losses,
-                },
+                # "Teacher_KL_Divergence": {
+                #     "overall": teacher_kl_losses,
+                # },
                 "Misc": {
                     "learning_rate": last_lr,
                     "total_games_played": total_games_played

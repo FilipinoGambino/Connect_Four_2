@@ -1,13 +1,13 @@
-from typing import NamedTuple, Tuple, Dict
 from abc import ABC, abstractmethod
+from kaggle_environments.core import Environment
 import logging
 import math
-
-from kaggle_environments.core import Environment
 import numpy as np
+from scipy.signal import convolve2d
+from typing import NamedTuple, Tuple, Dict
 
 from .connectx_env import ConnectFour
-from ..utility_constants import BOARD_SIZE
+from ..utility_constants import BOARD_SIZE, IN_A_ROW
 
 class RewardSpec(NamedTuple):
     reward_min: float
@@ -91,3 +91,40 @@ class LongGameReward(BaseRewardSpace):
 
     def _compute_rewards(self, game_state: ConnectFour) -> float:
         return game_state.turn / math.prod(BOARD_SIZE)
+
+
+class MoreInARowReward(BaseRewardSpace):
+    @staticmethod
+    def get_reward_spec() -> RewardSpec:
+        return RewardSpec(
+            reward_min=-1.,
+            reward_max=1.,
+            zero_sum=False,
+            only_once=False
+        )
+    def __init__(self, **kwargs):
+        super(MoreInARowReward, self).__init__(**kwargs)
+
+        horizontal_kernel = np.ones([1, IN_A_ROW], dtype=np.uint8)
+        vertical_kernel = np.transpose(horizontal_kernel)
+        diag1_kernel = np.eye(IN_A_ROW, dtype=np.uint8)
+        diag2_kernel = np.fliplr(diag1_kernel)
+
+        self.victory_kernels = [
+            horizontal_kernel,
+            vertical_kernel,
+            diag1_kernel,
+            diag2_kernel,
+        ]
+
+    def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, bool]:
+        if game_state.done:
+            return game_state.game_reward, game_state.done
+        return self._compute_rewards(game_state), game_state.done
+
+    def _compute_rewards(self, game_state: ConnectFour) -> float:
+        for kernel in self.victory_kernels:
+            conv = convolve2d(game_state.board == game_state.mark, kernel, mode="valid")
+            if (conv==IN_A_ROW-1).any():
+                return .5
+        return -1/42
