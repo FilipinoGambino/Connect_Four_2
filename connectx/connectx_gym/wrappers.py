@@ -19,11 +19,9 @@ class LoggingEnv(gym.Wrapper):
         logs = dict(step=self.env.unwrapped.turn)
 
         self.reward_sum.append(rewards)
-        logs["reward_length"] = [len(self.reward_sum)]
         logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
         logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
         logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
-        logs["rewards"] = self.reward_sum
 
 
         info.update({f"LOGGING_{key}": np.array(val, dtype=np.float32) for key, val in logs.items()})
@@ -47,23 +45,16 @@ class RewardSpaceWrapper(gym.Wrapper):
         self.reward_space = reward_space
 
     def _get_rewards_and_done(self) -> Tuple[Tuple[float, float], bool]:
-        # for key,val in self.unwrapped.env.dict().items():
-        #     print(key, val)
-        rewards, done = self.reward_space.compute_rewards(self.unwrapped.env)
-        if self.unwrapped.env.done and not done:
-            raise RuntimeError("Reward space did not return done, but the connectx engine is done.")
+        rewards, done = self.reward_space.compute_rewards(self.unwrapped)
         return rewards, done
 
     def reset(self, **kwargs):
-        obs, reward, done, info = super(RewardSpaceWrapper, self).reset(**kwargs)
-        # return obs, *self._get_rewards_and_done(), info
-        return obs, reward, done, info
+        obs, _, _, info = super(RewardSpaceWrapper, self).reset(**kwargs)
+        return obs, *self._get_rewards_and_done(), info
 
     def step(self, action):
-        # obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
-        # return obs, *self._get_rewards_and_done(), info
-        obs, reward, done, info = super(RewardSpaceWrapper, self).step(action)
-        return obs, reward, done, info
+        obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
+        return obs, *self._get_rewards_and_done(), info
 
 class VecEnv(gym.Env):
     def __init__(self, envs: List[gym.Env]):

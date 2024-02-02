@@ -10,6 +10,7 @@ from .obs_spaces import BaseObsSpace
 
 from ..utility_constants import BOARD_SIZE
 
+
 class ConnectFour(gym.Env):
     metadata = {'render_modes': ['human']}
     spec = None
