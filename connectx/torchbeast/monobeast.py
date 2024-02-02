@@ -721,7 +721,7 @@ def train(flags):
         )
         thread.start()
         # thread = MyThread(target=batch_and_learn, name=f"batch-and-learn-{i}", args=(i,))
-        thread.start()
+        # thread.start()
         learner_threads.append(thread)
 
     def checkpoint(checkpoint_path: Union[str, Path]):
