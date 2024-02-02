@@ -32,7 +32,6 @@ class ConnectFour(gym.Env):
         self.rows = self.env.configuration.rows
         self.columns = self.env.configuration.columns
 
-        self.reward = 0.
         self.action_space = act_space
         self.obs_space = obs_space
         self.default_reward_space = GameResultReward()
@@ -40,41 +39,40 @@ class ConnectFour(gym.Env):
 
     def reset(self, **kwargs):
         obs = self.trainer.reset()
-        self.reward = 0.
+        reward = 0.
         done = False
-        self._update(obs, self.reward)
+        self._update(obs, reward)
 
-        return obs, self.reward, done, self.info
+        return obs, reward, done, self.info
 
     def step(self, action):
-        obs, _, done, _ = self.trainer.step(action)
-        self.reward = self.turn / math.prod(BOARD_SIZE)
-        self._update(obs, self.reward, action)
-        return obs, self.reward, done, self.info
+        obs, reward, done, _ = self.trainer.step(action)
+        self._update(obs, reward, action)
+        return obs, reward, done, self.info
 
-    def process_actions(self, logits: np.ndarray) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
-        step = self.env.state[0]['observation']['step']
-        board = self.env.state[0]['observation']['board']
-        obs = np.array(board).reshape(BOARD_SIZE)
-        print(f"\naction logits:\n{logits}")
-        valid_action_logits = self.action_space.process_actions(
-            logits,
-            obs,
-        )
-        print(f"\nvalid actions:\n{valid_action_logits}")
-        valid_action_probs = softmax(valid_action_logits)
-        action = np.random.choice(BOARD_SIZE[1], p=valid_action_probs)
-
-        self.info.update(
-            dict(
-                logits=logits,
-                masked_logits=valid_action_logits,
-                masked_probs=valid_action_probs,
-                action=action,
-                step=step,
-            )
-        )
-        return action
+    # def process_actions(self, logits: np.ndarray) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
+    #     step = self.env.state[0]['observation']['step']
+    #     board = self.env.state[0]['observation']['board']
+    #     obs = np.array(board).reshape(BOARD_SIZE)
+    #     print(f"\naction logits:\n{logits}")
+    #     valid_action_logits = self.action_space.process_actions(
+    #         logits,
+    #         obs,
+    #     )
+    #     print(f"\nvalid actions:\n{valid_action_logits}")
+    #     valid_action_probs = softmax(valid_action_logits)
+    #     action = np.random.choice(BOARD_SIZE[1], p=valid_action_probs)
+    #
+    #     self.info.update(
+    #         dict(
+    #             logits=logits,
+    #             masked_logits=valid_action_logits,
+    #             masked_probs=valid_action_probs,
+    #             action=action,
+    #             step=step,
+    #         )
+    #     )
+    #     return action
 
     def _update(self, obs, reward, action=-1):
         obs_array = np.array(obs['board']).reshape((1,*BOARD_SIZE))
@@ -91,3 +89,7 @@ class ConnectFour(gym.Env):
     @property
     def turn(self):
         return self.env.state[0]['observation']['step']
+
+    @property
+    def done(self):
+        return self.env.done

@@ -1,9 +1,13 @@
 from typing import NamedTuple, Tuple, Dict
 from abc import ABC, abstractmethod
 import logging
+import math
 
 from kaggle_environments.core import Environment
 import numpy as np
+
+from connectx_env import ConnectFour
+from ..utility_constants import BOARD_SIZE
 
 class RewardSpec(NamedTuple):
     reward_min: float
@@ -50,34 +54,43 @@ class GameResultReward(FullGameRewardSpace):
     @staticmethod
     def get_reward_spec() -> RewardSpec:
         return RewardSpec(
-            reward_min=-10.,
-            reward_max=10.,
+            reward_min=-1.,
+            reward_max=1.,
             zero_sum=True,
-            only_once=False
+            only_once=True
         )
 
     def __init__(self, early_stop: bool = False, **kwargs):
         super(GameResultReward, self).__init__(**kwargs)
         self.early_stop = early_stop
 
-    def compute_rewards(self, game_state: Environment) -> Tuple[float, bool]:
+    def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, bool]:
         if self.early_stop:
             raise NotImplementedError  # done = done or should_early_stop(game_state)
         return self._compute_rewards(game_state), game_state.done
 
-    def _compute_rewards(self, game_state: Environment) -> float:
-        if game_state.done:
-            return game_state.reward * 10.
-        return game_state.reward
+    def _compute_rewards(self, game_state: ConnectFour) -> float:
+        if not game_state.done:
+            return 0.
+        return game_state.info['reward']
 
-    # def compute_rewards(self, game_state: Environment) -> Tuple[Tuple[float, float], bool]:
-    #     if self.early_stop:
-    #         raise NotImplementedError  # done = done or should_early_stop(game_state)
-    #     done = game_state.done
-    #     return self._compute_rewards(game_state, done), done
-    #
-    # def _compute_rewards(self, game_state: Environment, done: bool) -> Tuple[float, float]:
-    #     if not done:
-    #         return 0., 0.
-    #     rewards = (game_state.state[0]['reward'], game_state.state[1]['reward'])
-    #     return rewards
+class LongGameReward(BaseRewardSpace):
+    @staticmethod
+    def get_reward_spec() -> RewardSpec:
+        return RewardSpec(
+            reward_min=-1.,
+            reward_max=1.,
+            zero_sum=False,
+            only_once=False
+        )
+    def __init__(self, early_stop: bool = False, **kwargs):
+        super(LongGameReward, self).__init__(**kwargs)
+        self.early_stop = early_stop
+
+    def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, bool]:
+        if self.early_stop:
+            raise NotImplementedError  # done = done or should_early_stop(game_state)
+        return self._compute_rewards(game_state), game_state.done
+
+    def _compute_rewards(self, game_state: ConnectFour) -> float:
+        return game_state.turn / math.prod(BOARD_SIZE)

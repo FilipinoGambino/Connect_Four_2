@@ -23,7 +23,7 @@ reward_space_kwargs: {}
 debug: true
 act_space: BasicActionSpace
 obs_space: BasicObsSpace
-reward_space: GameResultReward
+reward_space: LongGameReward
 optimizer_class: Adam
 optimizer_kwargs:
   lr: 0.0001
