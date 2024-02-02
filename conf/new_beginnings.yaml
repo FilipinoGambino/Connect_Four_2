@@ -37,8 +37,8 @@ reward_space_kwargs: {}
 debug: True
 
 # Environment params
-adversary: random
-#adversary: negamax
+#adversary: random
+adversary: negamax
 
 # Model params
 act_space: BasicActionSpace
