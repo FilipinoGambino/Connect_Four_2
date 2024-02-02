@@ -36,6 +36,10 @@ obs_space_kwargs: {}
 reward_space_kwargs: {}
 debug: True
 
+# Environment params
+adversary: random
+#adversary: negamax
+
 # Model params
 act_space: BasicActionSpace
 obs_space: BasicObsSpace

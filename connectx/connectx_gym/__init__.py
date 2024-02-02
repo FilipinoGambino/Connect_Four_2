@@ -31,7 +31,7 @@ def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed
             act_space=flags.act_space(),
             obs_space=create_flexible_obs_space(flags, teacher_flags),
             player_id=flags.player_id,
-            seed=seed
+            adversary=flags.adversary
         )
         reward_space = create_reward_space(flags)
         env = RewardSpaceWrapper(env, reward_space)

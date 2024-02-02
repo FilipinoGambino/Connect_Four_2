@@ -492,7 +492,7 @@ def learn(
                     for key, val in batch["info"].items()
                     if key.startswith("LOGGING_") and "ACTIONS_" not in key
                 },
-                "Actions": batch['actions'],
+                # "Actions": batch['actions'],
                 "Loss": {
                     "vtrace_pg_loss": vtrace_pg_loss.detach().item(),
                     "upgo_pg_loss": upgo_pg_loss.detach().item(),

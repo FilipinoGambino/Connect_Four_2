@@ -20,13 +20,12 @@ class ConnectFour(gym.Env):
             act_space: BaseActSpace,
             obs_space: BaseObsSpace,
             player_id: int,
-            seed: Optional[int] = 42,
+            adversary: str,
     ):
         super(ConnectFour, self).__init__()
         self.env = make("connectx", debug=True)
         self.player_id = player_id
-        # players = ["negamax", "negamax"]
-        players = ["random", "random"]
+        players = [adversary, adversary]
         players[player_id] = None
         self.trainer = self.env.train(players)
 
