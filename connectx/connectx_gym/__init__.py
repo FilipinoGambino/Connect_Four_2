@@ -3,7 +3,7 @@ from typing import Optional
 
 from . import act_spaces, obs_spaces, reward_spaces
 from .connectx_env import ConnectFour
-from .wrappers import DictEnv, LoggingEnv, PytorchEnv, RewardSpaceWrapper, TensorflowEnv, VecEnv
+from .wrappers import DictEnv, LoggingEnv, PytorchEnv, RewardSpaceWrapper, VecEnv
 
 ACT_SPACES_DICT = {
     key: val for key, val in act_spaces.__dict__.items()

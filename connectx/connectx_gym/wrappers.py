@@ -1,16 +1,10 @@
-import gym
-import torch
-import numpy as np
 import copy
-# import tensorflow as tf
+import gym
+import numpy as np
+import torch
+from typing import Dict, List, Union, Tuple
 
-from kaggle_environments.core import Environment, make
-from typing import Dict, List, NoReturn, Optional, Union, Tuple
-
-# from . import ConnectFour
-from .act_spaces import BaseActSpace
-from .obs_spaces import BaseObsSpace
-from .reward_spaces import BaseRewardSpace, GameResultReward
+from .reward_spaces import BaseRewardSpace
 
 
 class LoggingEnv(gym.Wrapper):
@@ -165,26 +159,6 @@ class PytorchEnv(gym.Wrapper):
             return {key: self._to_tensor(val) for key, val in x.items()}
         elif isinstance(x, np.ndarray):
             return torch.from_numpy(x).to(device=self.device)
-
-class TensorflowEnv(gym.Wrapper):
-    def __init__(self, env: Union[gym.Env, VecEnv], device: torch.device = torch.device("cpu")):
-        super(TensorflowEnv, self).__init__(env)
-        self.device = device
-
-    def reset(self, **kwargs) -> Tuple[Dict, List, bool, List]:
-        return tuple([self._to_tensor(out) for out in super(TensorflowEnv, self).reset(**kwargs)])
-
-    def step(self, actions: List[torch.Tensor]):
-        action = [
-            act.cpu().numpy() for act in actions
-        ]
-        return tuple([self._to_tensor(out) for out in super(TensorflowEnv, self).step(action)])
-
-    def _to_tensor(self, x: Union[Dict, np.ndarray]) -> Dict[str, Union[Dict, torch.Tensor]]:
-        if isinstance(x, dict):
-            return {key: self._to_tensor(val) for key, val in x.items()}
-        else:
-            return tf.convert_to_tensor(x, dtype=tf.float32)
 
 
 class DictEnv(gym.Wrapper):

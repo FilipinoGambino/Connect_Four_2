@@ -7,7 +7,6 @@ from scipy.special import softmax
 
 from .act_spaces import BaseActSpace
 from .obs_spaces import BaseObsSpace
-from .reward_spaces import GameResultReward
 
 from ..utility_constants import BOARD_SIZE
 
