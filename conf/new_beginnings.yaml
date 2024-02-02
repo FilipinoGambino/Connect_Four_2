@@ -20,9 +20,9 @@ use_mixed_precision: False
 total_steps: 1e4
 batch_size: 8
 checkpoint_freq: 60.
-num_actors: 1
-n_actor_envs: 2
-unroll_length: 42
+num_actors: 2
+n_actor_envs: 16
+unroll_length: 16
 player_id: 0
 seed: 42
 model_arch: mha_model
@@ -39,7 +39,7 @@ debug: True
 # Model params
 act_space: BasicActionSpace
 obs_space: BasicObsSpace
-reward_space: GameResultReward
+reward_space: LongGameReward
 
 ## OPTIMIZER params
 optimizer_class: Adam

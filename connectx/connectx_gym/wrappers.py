@@ -19,6 +19,7 @@ class LoggingEnv(gym.Wrapper):
         logs = dict(step=self.env.unwrapped.turn)
 
         self.reward_sum.append(rewards)
+        logs["reward_length"] = [len(self.reward_sum)]
         logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
         logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
         logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
@@ -31,7 +32,7 @@ class LoggingEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
-        self.reward_sum = [reward]
+        self.reward_sum = []
         return obs, [reward], done, self.info(info, reward)
 
     def step(self, action: Dict[str, np.ndarray]):

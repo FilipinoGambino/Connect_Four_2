@@ -83,13 +83,10 @@ class LongGameReward(BaseRewardSpace):
             zero_sum=False,
             only_once=False
         )
-    def __init__(self, early_stop: bool = False, **kwargs):
+    def __init__(self, **kwargs):
         super(LongGameReward, self).__init__(**kwargs)
-        self.early_stop = early_stop
 
     def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, bool]:
-        if self.early_stop:
-            raise NotImplementedError  # done = done or should_early_stop(game_state)
         return self._compute_rewards(game_state), game_state.done
 
     def _compute_rewards(self, game_state: ConnectFour) -> float:

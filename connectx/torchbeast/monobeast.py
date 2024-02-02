@@ -716,11 +716,11 @@ def train(flags):
 
     learner_threads = []
     for i in range(flags.num_learner_threads):
-        # thread = threading.Thread(
-        #     target=batch_and_learn, name=f"batch-and-learn-{i}", args=(i,)
-        # )
-        # thread.start()
-        thread = MyThread(target=batch_and_learn, name=f"batch-and-learn-{i}", args=(i,))
+        thread = threading.Thread(
+            target=batch_and_learn, name=f"batch-and-learn-{i}", args=(i,)
+        )
+        thread.start()
+        # thread = MyThread(target=batch_and_learn, name=f"batch-and-learn-{i}", args=(i,))
         thread.start()
         learner_threads.append(thread)
 
