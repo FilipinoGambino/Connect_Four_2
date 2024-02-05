@@ -85,12 +85,13 @@ class LongGameReward(BaseRewardSpace):
         )
     def __init__(self, **kwargs):
         super(LongGameReward, self).__init__(**kwargs)
+        self.board_size = math.prod(BOARD_SIZE)
 
     def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, bool]:
         return self._compute_rewards(game_state), game_state.done
 
     def _compute_rewards(self, game_state: ConnectFour) -> float:
-        return game_state.turn / math.prod(BOARD_SIZE)
+        return game_state.turn / self.board_size
 
 
 class MoreInARowReward(BaseRewardSpace):
@@ -116,6 +117,7 @@ class MoreInARowReward(BaseRewardSpace):
             diag1_kernel,
             diag2_kernel,
         ]
+        self.base_reward = -1/math.prod(BOARD_SIZE)
 
     def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, bool]:
         if game_state.done:
@@ -127,4 +129,4 @@ class MoreInARowReward(BaseRewardSpace):
             conv = convolve2d(game_state.board == game_state.mark, kernel, mode="valid")
             if (conv==IN_A_ROW-1).any():
                 return .5
-        return -1/42
+        return self.base_reward

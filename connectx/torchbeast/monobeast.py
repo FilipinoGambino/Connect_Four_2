@@ -209,10 +209,6 @@ def act(
             if index is None:
                 break
 
-            # Write old rollout end.
-            # print(env_output)
-            # print('------------------------------------------------')
-            # print(agent_output)
             fill_buffers_inplace(buffers[index], dict(**env_output, **agent_output), 0)
 
             # Do new rollout.
@@ -291,6 +287,7 @@ def learn(
 ) -> Tuple[Dict, int]:
     """Performs a learning (optimization) step."""
     with lock:
+        try:
             with amp.autocast(enabled=flags.use_mixed_precision):
                 flattened_batch = buffers_apply(batch, lambda x: torch.flatten(x, start_dim=0, end_dim=1))
                 learner_outputs = learner_model(flattened_batch)
@@ -502,6 +499,8 @@ def learn(
             # noinspection PyTypeChecker
             actor_model.load_state_dict(learner_model.state_dict())
             return stats, total_games_played
+        except Exception as e:
+            print(e)
 
 def train(flags):
     # Necessary for multithreading and multiprocessing

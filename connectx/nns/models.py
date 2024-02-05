@@ -223,11 +223,7 @@ class BasicActorCriticNetwork(nn.Module):
             **actor_kwargs
         )
         baseline = self.baseline(self.baseline_base(base_out))
-        # print(f"------------------------------------------\n"
-        #       f"{actions.shape}  |  "
-        #       f"{policy_logits.shape}  |  "
-        #       f"{baseline.shape}\n"
-        #       f"------------------------------------------")
+
         return dict(
             actions=actions,
             policy_logits=policy_logits,

@@ -78,3 +78,7 @@ class ConnectFour(gym.Env):
     @property
     def configuration(self):
         return self.env.configuration
+
+    @property
+    def steps(self):
+        return self.env.steps

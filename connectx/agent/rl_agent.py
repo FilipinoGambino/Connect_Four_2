@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Dict
@@ -12,11 +13,13 @@ from connectx.connectx_gym import create_env
 
 MODEL_CONFIG_PATH = Path(__file__).parent / "model_config.yaml"
 RL_AGENT_CONFIG_PATH = Path(__file__).parent / "rl_agent_config.yaml"
-# CHECKPOINT_PATH, = list(Path(__file__).parent.glob('*.pt'))
+CHECKPOINT_PATH,_ = list(Path(__file__).parent.glob('*.pt'))
+AGENT = None
 
+os.environ["OMP_NUM_THREADS"] = "1"
 
 class RLAgent:
-    def __init__(self, player_id):
+    def __init__(self, obs, player_id):
         with open(MODEL_CONFIG_PATH, 'r') as file:
             self.model_flags = flags_to_namespace(yaml.safe_load(file))
         with open(RL_AGENT_CONFIG_PATH, 'r') as f:
@@ -33,15 +36,14 @@ class RLAgent:
         self.device = torch.device(device_id)
 
         self.env = create_env(self.model_flags, self.device)
-        obs = self.env.unwrapped[0].obs_space.get_obs_spec().sample()
+        self.env.reset()
+        # obs = self.env.unwrapped[0].obs_space.get_obs_spec().sample()
         self.action_placeholder = [torch.ones(1) for _ in range(self.model_flags.n_actor_envs)]
 
-        num_inputs = 0
-        for key in obs:
-            num_inputs += obs[key].shape[0]
-        num_inputs *= self.model_flags.n_actor_envs
-
         self.model = create_model(self.model_flags, self.device)
+        checkpoint_states = torch.load(CHECKPOINT_PATH, map_location=self.device)
+        self.model.load_state_dict(checkpoint_states["model_state_dict"])
+        self.model.eval()
 
         self.stopwatch = Stopwatch()
 
@@ -62,34 +64,32 @@ class RLAgent:
 
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
-            agent_output_augmented = self.model.select_best_actions(relevant_env_output_augmented)
+            outputs = self.model.select_best_actions(relevant_env_output_augmented)
             agent_output = {
-                "policy_logits": self.aggregate_augmented_predictions(agent_output_augmented["policy_logits"]),
-                "baseline": agent_output_augmented["baseline"].mean(dim=0, keepdim=True).cpu()
+                "policy_logits": outputs["policy_logits"].cpu(),
+                "baseline": outputs["baseline"].cpu()
             }
-            agent_output["action"] = models.DictActor.logits_to_actions(
+            agent_output["actions"] = models.DictActor.logits_to_actions(
                 torch.flatten(agent_output["policy_logits"], start_dim=0, end_dim=-2),
-                sample=False,
-                actions_per_square=None
+                sample=False
             ).view(*agent_output["policy_logits"].shape[:-1], -1)
 
         # Used for debugging and visualization
         if raw_model_output:
             return agent_output
 
-        self.stopwatch.stop().start("Collision detection")
         actions = agent_output["action"]
 
         self.stopwatch.stop()
 
 
-        value = agent_output["baseline"].squeeze().numpy()[obs.player]
+        value = agent_output["baseline"].numpy()
         value_msg = f"Turn: {self.game_state.turn} - Predicted value: {value:.2f}"
         timing_msg = f"{str(self.stopwatch)}"
         overage_time_msg = f"Remaining overage time: {obs['remainingOverageTime']:.2f}"
 
         # actions.append(annotate.sidetext(value_msg))
-        # DEBUG_MESSAGE(" - ".join([value_msg, timing_msg, overage_time_msg]))
+        print(" - ".join([value_msg, timing_msg, overage_time_msg]))
         return actions
 
     def get_env_output(self):
@@ -122,4 +122,5 @@ class RLAgent:
 
 if __name__=="__main__":
     agent = RLAgent(1)
-    print(agent(agent.env.reset()))
+    # print(agent(agent.env.reset()))
+    # print(CHECKPOINT_PATH)
