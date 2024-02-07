@@ -67,7 +67,7 @@ class _BasicObsSpaceWrapper(gym.Wrapper):
         rows, cols = BOARD_SIZE
         board = np.array(observation['board'], dtype=np.float32).reshape((rows, cols))
         p1_mark = observation['mark']
-        p2_mark = (p1_mark + 1) % 2
+        p2_mark = max(1, (p1_mark + 1) % 3)
         norm_turn = observation['step'] / (rows * cols)
         obs = {
             "filled_cells": np.where(board != 0, 1, 0),

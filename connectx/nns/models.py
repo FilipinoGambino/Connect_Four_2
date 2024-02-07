@@ -21,13 +21,10 @@ class DictActor(nn.Module):
 
         self.actor = nn.Conv2d(
             in_channels,
-            1,
-            (1, 1)
+            self.n_actions,
+            kernel_size=BOARD_SIZE
         )
-        self.row_actor = nn.Linear(
-            BOARD_SIZE[0],
-            1,
-        )
+
 
     def forward(
             self,
@@ -36,37 +33,28 @@ class DictActor(nn.Module):
             sample: bool,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Expects an input of shape batch_size * 2, n_channels, h, w
-        This input will be projected by the actors, and then converted to shape batch_size, n_channels, 2, h, w
+        Expects an input of shape batch_size, n_channels, h, w
+        This input will be projected by the actor, and then converted to shape batch_size, n_channels, 1, h, w
         """
 
         b, _, h, w = x.shape
-        logits = self.actor(x)
-        # logits = self.row_actor(logits)
-        # logits = logits.permute(0,1,3,2).squeeze(-2)
+        logits = self.actor(x).contiguous()
+        logits = logits.view(-1,self.n_actions)
 
-        # logits = logits.view(b // 2, 2, h, w)
-        # Move the logits dimension to the end and swap the player and channel dimensions
-        # logits = logits.permute(0, 1, 3, 4, 2).contiguous()
-        # In case all actions are masked, unmask all actions
-        # We first have to cast it to an int tensor to avoid errors in kaggle environment
-        print(f"aam before reshape: {available_actions_mask.shape}")
-        aam = available_actions_mask.unsqueeze(-2).repeat([1,1,BOARD_SIZE[0],1])
-        print(f"logits no view: {logits.shape}")
-        print(f"aam: {aam.shape}")
-        assert logits.shape == aam.shape
+        aam = available_actions_mask.squeeze(1)
+
+        assert logits.shape == aam.shape, f"logits: {logits.shape} | mask: {aam.shape}"
         logits = logits + torch.where(
-            available_actions_mask,
+            aam,
             torch.zeros_like(logits) + float("-inf"),
             torch.zeros_like(logits)
         )
 
-        print(f"logits view: {logits.view(-1, *BOARD_SIZE).shape}")
-        actions = DictActor.logits_to_actions(logits.view(-1, *BOARD_SIZE), sample)
-        print(f"actions: {actions.shape}")
-        print(f"logits2: {logits.shape}")
-        logits = logits.squeeze(-2)
-        print(f"logits2: {logits.shape}")
+        actions = DictActor.logits_to_actions(logits, sample)
+        actions = actions.view(*logits.shape[:-1], -1)
+        # print(logits.shape)
+        # print(actions.shape)
+        # print(actions)
 
         return logits, actions
 
@@ -133,8 +121,8 @@ class BaselineLayer(nn.Module):
                 value_head_idxs: Optional[torch.Tensor]=None
                 ) -> torch.Tensor:
         """
-        Expects an input of shape b * 2, n_channels, x, y
-        Returns an output of shape b, 2
+        Expects an input of shape b , n_channels, x, y
+        Returns an output of shape b, 1
         """
         # Average feature planes
         if self.rescale_input:
@@ -167,44 +155,24 @@ class BasicActorCriticNetwork(nn.Module):
         super(BasicActorCriticNetwork, self).__init__()
         self.dict_input_layer = DictInputLayer()
         self.base_model = base_model
-        self.base_out_channels = base_out_channels
 
         if n_action_value_layers < 2:
             raise ValueError("n_action_value_layers must be >= 2 in order to use spectral_norm")
 
-        """
-        actor_layers = []
-        baseline_layers = []
-        for i in range(n_action_value_layers - 1):
-            actor_layers.append(
-                nn.utils.spectral_norm(nn.Conv2d(self.base_out_channels, self.base_out_channels, (1, 1)))
-            )
-            actor_layers.append(actor_critic_activation())
-            baseline_layers.append(
-                nn.utils.spectral_norm(nn.Conv2d(self.base_out_channels, self.base_out_channels, (1, 1)))
-            )
-            baseline_layers.append(actor_critic_activation())
-
-        self.actor_base = nn.Sequential(*actor_layers)
-        self.actor = DictActor(self.base_out_channels, action_space)
-
-        self.baseline_base = nn.Sequential(*baseline_layers)
-        """
-
         self.actor_base = self.make_spectral_norm_head_base(
             n_layers=n_action_value_layers,
-            n_channels=self.base_out_channels,
+            n_channels=base_out_channels,
             activation=actor_critic_activation
         )
-        self.actor = DictActor(self.base_out_channels, action_space)
+        self.actor = DictActor(base_out_channels, action_space)
 
         self.baseline_base = self.make_spectral_norm_head_base(
             n_layers=n_action_value_layers,
-            n_channels=self.base_out_channels,
+            n_channels=base_out_channels,
             activation=actor_critic_activation
         )
         self.baseline = BaselineLayer(
-            in_channels=self.base_out_channels,
+            in_channels=base_out_channels,
             reward_space=reward_space,
             n_value_heads=n_value_heads,
             rescale_input=rescale_value_input

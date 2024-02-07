@@ -6,9 +6,7 @@ from .models import BasicActorCriticNetwork
 from .in_blocks import ConvEmbeddingInputLayer
 from .attn_blocks import MHABlock, ViTBlock
 from ..connectx_gym import create_flexible_obs_space, obs_spaces
-from ..connectx_game.game_constants import Constants
-
-height, width = Constants.BOARD_SIZE
+from ..utility_constants import BOARD_SIZE
 
 def create_model(
         flags,
@@ -42,6 +40,21 @@ def _create_model(
                 dim=flags.hidden_dim,
                 heads=flags.n_heads
             )
+        )
+    elif flags.model_arch == "vit_model":
+        base_model = nn.Sequential(
+            conv_embedding_input_layer,
+            *[ViTBlock(
+                in_channels=flags.hidden_dim,
+                out_channels=flags.hidden_dim,
+                height=BOARD_SIZE[0],
+                width=BOARD_SIZE[1],
+                mha_layer=MHABlock(
+                    dim=flags.hidden_dim,
+                    heads=flags.n_heads
+                ),
+                normalize=flags.normalize,
+            ) for _ in range(flags.n_blocks)]
         )
     elif flags.model_arch == "linear_model":
         base_model = nn.Sequential(

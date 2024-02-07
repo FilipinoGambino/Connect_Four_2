@@ -6,7 +6,7 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: winning_position_reward
+name: new_beginnings
 ## WANDB params
 # The wandb project name
 project: ConnectX
@@ -17,7 +17,7 @@ group: debug
 
 # Parameters to overwrite
 use_mixed_precision: False
-total_steps: 1e3
+total_steps: 1e5
 batch_size: 8
 checkpoint_freq: 60.
 num_actors: 2
@@ -25,7 +25,7 @@ n_actor_envs: 16
 unroll_length: 16
 player_id: 0
 seed: 42
-model_arch: mha_model
+model_arch: vit_model
 embedding_dim: 32
 hidden_dim: 128
 n_heads: 4
@@ -34,6 +34,7 @@ device: cpu
 rescale_value_input: False
 obs_space_kwargs: {}
 reward_space_kwargs: {}
+normalize: False
 debug: False
 
 # Environment params
@@ -64,7 +65,7 @@ reduction: mean
 # MISCELLANEOUS params
 actor_device: cpu
 learner_device: cpu
-disable_wandb: true
+disable_wandb: False
 model_log_freq: 100
 # file_descriptor or file_system
 sharing_strategy: file_descriptor

@@ -74,14 +74,14 @@ class ViTBlock(nn.Module):
             out_channels: int,
             height: int,
             width: int,
-            mhsa_layer: nn.Module = MHABlock,
+            mha_layer: nn.Module = MHABlock,
             normalize: bool = True,
             activation: Callable = nn.GELU
     ):
         super(ViTBlock, self).__init__()
 
         self.norm1 = nn.LayerNorm([in_channels, height, width]) if normalize else nn.Identity()
-        self.mhsa = mhsa_layer
+        self.mha = mha_layer
 
         self.norm2 = nn.LayerNorm([in_channels, height, width]) if normalize else nn.Identity()
         self.mlp = nn.Sequential(
@@ -100,7 +100,7 @@ class ViTBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
-        x = self.mhsa(self.norm1(x))
+        x = self.mha(self.norm1(x))
         x = x + identity
         return self.mlp(self.norm2(x)) + x
 
