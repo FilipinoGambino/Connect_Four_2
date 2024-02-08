@@ -45,9 +45,7 @@ def get_default_flags(flags: DictConfig) -> DictConfig:
     flags.setdefault("teacher_baseline_cost", flags.get("teacher_kl_cost", 0.) / 2.)
 
     # Model params
-    flags.setdefault("use_index_select", True)
-    if flags.get("use_index_select"):
-        logging.info("index_select disables padding_index and is equivalent to using a learnable pad embedding.")
+
 
     # Reloading previous run params
     flags.setdefault("load_dir", None)

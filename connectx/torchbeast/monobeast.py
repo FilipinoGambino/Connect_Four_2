@@ -59,6 +59,7 @@ class MyThread(threading.Thread):
 
     def run(self):
         try:
+            print('hi')
             self.target(self.args)
         except Exception as e:
             print(f'An exception occured in thread "{self.name}":\n{e}')
@@ -194,21 +195,18 @@ def act(
     else:
         catch_me = Exception
     try:
-        logging.info("Actor %i started.", actor_index)
+        logging.info(f"Actor {actor_index} started.")
         timings = prof.Timings()
 
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
-        # if flags.seed is not None:
-        #     env.seed(flags.seed + actor_index * flags.n_actor_envs)
-        # else:
-        #     env.seed()
+
         env_output = env.reset(force=True)
         agent_output = actor_model(env_output)
         while True:
             index = free_queue.get()
             if index is None:
                 break
-
+            logging.info(f'---------------------------------------------------------------------------->{index}')
             fill_buffers_inplace(buffers[index], dict(**env_output, **agent_output), 0)
 
             # Do new rollout.
@@ -288,7 +286,6 @@ def learn(
     """Performs a learning (optimization) step."""
     with lock:
         try:
-            logging.info("learning")
             with amp.autocast(enabled=flags.use_mixed_precision):
                 flattened_batch = buffers_apply(batch, lambda x: torch.flatten(x, start_dim=0, end_dim=1))
                 learner_outputs = learner_model(flattened_batch)
@@ -708,7 +705,7 @@ def train(flags):
         while step < flags.total_steps:
             start_step = step
             start_time = timer()
-            time.sleep(5)
+            time.sleep(10)
 
             # Save every checkpoint_freq minutes
             if timer() - last_checkpoint_time > flags.checkpoint_freq * 60:
