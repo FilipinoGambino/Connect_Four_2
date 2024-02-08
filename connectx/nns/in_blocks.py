@@ -7,6 +7,15 @@ import numpy as np
 
 from ..utility_constants import BOARD_SIZE
 
+import logging
+
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
+
 class DictInputLayer(nn.Module):
     @staticmethod
     def forward(
@@ -62,6 +71,7 @@ class ConvEmbeddingInputLayer(nn.Module):
         cont_outs = []
         emb_outs = dict()
         for key,op in self.keys_to_op.items():
+            logging.info(f"{key}:{op} | {x[key].shape}")
             in_tensor = x[key]
             if op == "embedding":
                 out = self.embeddings[key](in_tensor)
@@ -70,12 +80,13 @@ class ConvEmbeddingInputLayer(nn.Module):
                 cont_outs.append(in_tensor)
             else:
                 raise RuntimeError(f"Unknown operation: {op}")
-
+        logging.info("Concatenating continuous outputs")
         cont_outs = torch.cat(cont_outs, dim=0).unsqueeze(-1)
-
+        logging.info("Embedding concatenated continuous outputs")
         continuous_outs = self.continuous_space_embedding(cont_outs)
         continuous_outs = continuous_outs.repeat(1,1,*BOARD_SIZE)
-
+        logging.info("Merging discrete embeddings")
         embedding_outs = self.embedding_merger(torch.cat([emb_tensor for emb_tensor in emb_outs.values()], dim=1))
+        logging.info("Merging continuous embeddings and discrete embeddings")
         merged_outs = self.merger(torch.cat([continuous_outs, embedding_outs], dim=1))
         return merged_outs
