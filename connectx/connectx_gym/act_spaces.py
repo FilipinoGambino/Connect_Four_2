@@ -47,10 +47,6 @@ class BasicActionSpace(BaseActSpace):
     @staticmethod
     def get_available_actions_mask(game_state: np.ndarray) -> Dict[str, np.ndarray]:
         available_actions_mask = np.array(game_state.all(axis=1), dtype=bool)
-        # filled_cells = np.where(game_state != 0, True, False)#.repeat(BOARD_SIZE[1],axis=0)
-        # filled_cells = np.eye(6,7,dtype=bool)
-        # filled_cells = np.expand_dims(filled_cells,axis=-1)
-        # filled_cells = filled_cells.repeat(BOARD_SIZE[1],axis=-1)
         return available_actions_mask
 
 

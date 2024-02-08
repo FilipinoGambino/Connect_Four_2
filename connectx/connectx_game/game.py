@@ -1,42 +1,38 @@
-from scipy.signal import convolve2d
-
-from .game_objects import Player, GameBoard
-
-IN_A_ROW = 4
+import numpy as np
 
 class Game:
-    def __init__(self, config=None):
-        self.config = config
+    def _initialize(self, conf):
+        self.board_shape = (conf['rows'], conf['columns'])
+        self.board = np.zeros(self.board_shape)
+        self.inarow = conf['inarow']
+        self.max_turns = conf['rows'] * conf['columns']
 
-        height = config.rows
-        width = config.cols
-        self.board = GameBoard(height, width)
+    def _update(self, obs):
+        self.remaining_time = obs['remainingOverageTime']
+        self.board = np.array(obs['board']).reshape(self.board_shape)
+        self.step = obs['step']
+        self.mark = obs['mark']
 
-        self.players = [Player(1), Player(2)]
-        self.turn = 0
-        self.done = False
-        self.info = {}
 
-    def step(self, col):
-        self.turn += 1
-        active_player = self.turn % 2
-        inactive_player = (self.turn + 1) % 2
+if __name__=='__main__':
+    from kaggle_environments import make
+    from random import choice
+    import logging
 
-        self.board.place_mark(col, self.players[active_player].mark)
+    logging.basicConfig(
+        format=(
+            "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "\n%(message)s"
+        ),
+        level=0,
+    )
 
-        if self.turn > IN_A_ROW and self.winning_move:
-            self.players[active_player].winner()
-            self.players[inactive_player].loser()
-            self.done = True
-        elif self.turn > IN_A_ROW and self.no_valid_moves:
-            # Tie
-            [player.winner() for player in self.players]
+    def my_agent(observation, configuration):
+        game = Game()
+        game._initialize(configuration)
+        game._update(observation, configuration)
+        logging.info(game.board)
+        return choice([c for c in range(configuration.columns) if observation.board[c] == 0])
 
-    def winning_move(self):
-        for kernel in self.board.victory_kernels:
-            if (convolve2d(self.board == self.players[self.turn], kernel, mode="valid") == IN_A_ROW).any():
-                return True
-        return False
 
-    def no_valid_moves(self):
-        return ~(self.board == 0).any()
+    env = make('connectx')
+    env.run([my_agent, 'random'])

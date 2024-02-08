@@ -1,2 +1,0 @@
-BOARD_SIZE = (6,7)
-IN_A_ROW = 4

@@ -70,12 +70,6 @@ class VecEnv(gym.Env):
 
     @staticmethod
     def _vectorize_env_outs(env_outs: List[Tuple]) -> Tuple:
-        # if len(env_outs[0]) < 4:
-        #     obs_list, info_list = zip(*env_outs)
-        #     obs_stacked = VecEnv._stack_dict(obs_list)
-        #     info_stacked = VecEnv._stack_dict(info_list)
-        #     return obs_stacked, info_stacked
-        # else:
         obs_list, reward_list, done_list, info_list = zip(*env_outs)
         obs_stacked = VecEnv._stack_dict(obs_list)
         reward_stacked = np.array(reward_list)

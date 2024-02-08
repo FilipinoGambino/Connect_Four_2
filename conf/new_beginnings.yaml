@@ -23,7 +23,6 @@ checkpoint_freq: 60.
 num_actors: 2
 n_actor_envs: 16
 unroll_length: 16
-player_id: 0
 seed: 42
 model_arch: vit_model
 embedding_dim: 32
@@ -36,9 +35,6 @@ obs_space_kwargs: {}
 reward_space_kwargs: {}
 normalize: False
 debug: False
-
-# Environment params
-adversary: negamax
 
 # Model params
 act_space: BasicActionSpace

@@ -21,7 +21,6 @@ REWARD_SPACES_DICT = {
 def create_flexible_obs_space(flags, teacher_flags: Optional) -> obs_spaces.BaseObsSpace:
     return flags.obs_space(**flags.obs_space_kwargs)
 
-
 def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed: Optional[int] = None) -> PytorchEnv:
     if seed is None:
         seed = flags.seed
@@ -30,8 +29,6 @@ def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed
         env = ConnectFour(
             act_space=flags.act_space(),
             obs_space=create_flexible_obs_space(flags, teacher_flags),
-            player_id=flags.player_id,
-            adversary=flags.adversary
         )
         reward_space = create_reward_space(flags)
         env = RewardSpaceWrapper(env, reward_space)
@@ -42,7 +39,6 @@ def create_env(flags, device: torch.device, teacher_flags: Optional = None, seed
     env = PytorchEnv(env, device)
     env = DictEnv(env)
     return env
-
 
 def create_reward_space(flags) -> reward_spaces.BaseRewardSpace:
     return flags.reward_space(**flags.reward_space_kwargs)

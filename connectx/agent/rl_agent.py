@@ -19,7 +19,7 @@ AGENT = None
 os.environ["OMP_NUM_THREADS"] = "1"
 
 class RLAgent:
-    def __init__(self, obs, player_id):
+    def __init__(self, player_id):
         with open(MODEL_CONFIG_PATH, 'r') as file:
             self.model_flags = flags_to_namespace(yaml.safe_load(file))
         with open(RL_AGENT_CONFIG_PATH, 'r') as f:
@@ -35,10 +35,19 @@ class RLAgent:
 
         self.device = torch.device(device_id)
 
-        self.env = create_env(self.model_flags, self.device)
-        self.env.reset()
-        # obs = self.env.unwrapped[0].obs_space.get_obs_spec().sample()
-        self.action_placeholder = [torch.ones(1) for _ in range(self.model_flags.n_actor_envs)]
+        env = ConnectFour(
+            act_space=self.model_flags.act_space(),
+            obs_space=self.model_flags.obs_space(),
+        )
+        reward_space = create_reward_space(self.model_flags)
+        env = RewardSpaceWrapper(env, reward_space)
+        env = env.obs_space.wrap_env(env)
+        env = LoggingEnv(env, reward_space)
+        env = VecEnv([env])
+        env = PytorchEnv(env, device_id)
+        self.env = DictEnv(env)
+
+        self.action_placeholder = torch.ones(1)
 
         self.model = create_model(self.model_flags, self.device)
         checkpoint_states = torch.load(CHECKPOINT_PATH, map_location=self.device)
@@ -47,14 +56,14 @@ class RLAgent:
 
         self.stopwatch = Stopwatch()
 
-    def __call__(self, obs, raw_model_output: bool = False):
+    def __call__(self, obs, conf):
         self.stopwatch.reset()
 
         self.stopwatch.start("Observation processing")
         # self.preprocess(obs, conf)
-        env_output = self.get_env_output()
+        # env_output = self.get_env_output()
         # print(f'output: {env_output["obs"]}')
-        aam = self.env.unwrapped[0].action_space.get_available_actions_mask(env_output['obs']['filled_cells'])
+        aam = self.env.unwrapped[0].action_space.get_available_actions_mask(obs)
         relevant_env_output_augmented = {
             "obs": env_output["obs"],
             "info": {
@@ -74,9 +83,6 @@ class RLAgent:
                 sample=False
             ).view(*agent_output["policy_logits"].shape[:-1], -1)
 
-        # Used for debugging and visualization
-        if raw_model_output:
-            return agent_output
 
         actions = agent_output["action"]
 
@@ -121,6 +127,8 @@ class RLAgent:
         return self.unwrapped_env.env.state
 
 if __name__=="__main__":
+    from kaggle_environments import make
+    env = make('connectx')
     agent = RLAgent(1)
-    # print(agent(agent.env.reset()))
-    # print(CHECKPOINT_PATH)
+
+    env.play([agent, 'random'])
