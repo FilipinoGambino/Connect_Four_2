@@ -106,7 +106,7 @@ class ViTBlock(nn.Module):
                 kernel_size=(1, 1)
             )
         )
-        logging.info('Finished making the ViT Block')
+        logging.info(f'Finished making the ViT Block\n{self}')
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         logging.info(f"Inside ViT Block")

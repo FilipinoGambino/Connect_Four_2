@@ -194,6 +194,7 @@ class BasicActorCriticNetwork(nn.Module):
         x, available_actions_mask, subtask_embeddings = self.dict_input_layer(x)
         for key,val in x.items():
             logging.info(f"Getting base_model outputs {key}:{val.shape}")
+        logging.info(f"{self.base_model}")
         base_out = self.base_model(x)
         logging.info(f"Ignoring subtasks")
         if subtask_embeddings is not None:
