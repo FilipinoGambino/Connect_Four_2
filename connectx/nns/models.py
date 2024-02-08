@@ -192,7 +192,8 @@ class BasicActorCriticNetwork(nn.Module):
     ) -> Dict[str, Any]:
         logging.info(f"Beginning forward pass")
         x, available_actions_mask, subtask_embeddings = self.dict_input_layer(x)
-        logging.info(f"Getting base_model outputs {x.shape}")
+        for key,val in x.items():
+            logging.info(f"Getting base_model outputs {key}:{val.shape}")
         base_out = self.base_model(x)
         logging.info(f"Ignoring subtasks")
         if subtask_embeddings is not None:
