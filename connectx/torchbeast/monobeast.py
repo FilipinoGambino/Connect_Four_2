@@ -197,11 +197,13 @@ def act(
     try:
         logging.info(f"Actor {actor_index} started.")
         timings = prof.Timings()
-
+        logging.info(f"creating env")
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
-
+        logging.info(f"getting env output")
         env_output = env.reset(force=True)
+        logging.info(f"getting agent output")
         agent_output = actor_model(env_output)
+        logging.info(f"beginning loop")
         while True:
             index = free_queue.get()
             if index is None:
