@@ -65,7 +65,7 @@ reduction: mean
 # MISCELLANEOUS params
 actor_device: cpu
 learner_device: cpu
-disable_wandb: True
+disable_wandb: False
 model_log_freq: 100
 # file_descriptor or file_system
 sharing_strategy: file_descriptor

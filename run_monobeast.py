@@ -100,6 +100,5 @@ def main(flags: DictConfig):
 
 
 if __name__ == "__main__":
-    # wandb.login(key='0044667026088d514a021de2934e3ec09999a24a')
     # mp.set_start_method("spawn")
     main()

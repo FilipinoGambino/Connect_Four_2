@@ -288,6 +288,7 @@ def learn(
     """Performs a learning (optimization) step."""
     with lock:
         try:
+            logging.info("learning")
             with amp.autocast(enabled=flags.use_mixed_precision):
                 flattened_batch = buffers_apply(batch, lambda x: torch.flatten(x, start_dim=0, end_dim=1))
                 learner_outputs = learner_model(flattened_batch)
