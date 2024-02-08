@@ -4,6 +4,15 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+import logging
+
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
+
 class AttnVector(nn.Module):
     def __init__(
             self,
@@ -99,9 +108,13 @@ class ViTBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        logging.info(f"Inside ViT Block")
         identity = x
+        logging.info(f"Saved identity")
         x = self.mha(self.norm1(x))
+        logging.info(f"Normalized and multi-headed attention")
         x = x + identity
+        logging.info(f"Addition")
         return self.mlp(self.norm2(x)) + x
 
 
