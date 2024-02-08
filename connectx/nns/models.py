@@ -10,14 +10,6 @@ from .in_blocks import DictInputLayer
 from ..connectx_gym.reward_spaces import RewardSpec
 from ..utility_constants import BOARD_SIZE
 
-import logging
-
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 class DictActor(nn.Module):
     def __init__(
@@ -190,24 +182,20 @@ class BasicActorCriticNetwork(nn.Module):
             sample: bool = True,
             **actor_kwargs
     ) -> Dict[str, Any]:
-        logging.info(f"Beginning forward pass")
         x, available_actions_mask, subtask_embeddings = self.dict_input_layer(x)
-        for key,val in x.items():
-            logging.info(f"Getting base_model outputs {key}:{val.shape}")
         base_out = self.base_model(x)
-        logging.info(f"Ignoring subtasks")
+
         if subtask_embeddings is not None:
             subtask_embeddings = torch.repeat_interleave(subtask_embeddings, 2, dim=0)
-        logging.info(f"Passing base_out to actor_base and actor")
+
         policy_logits, actions = self.actor(
             self.actor_base(base_out),
             available_actions_mask=available_actions_mask,
             sample=sample,
             **actor_kwargs
         )
-        logging.info(f"Passing base_out to baseline_base and baseline")
+
         baseline = self.baseline(self.baseline_base(base_out))
-        logging.info(f"DONE!")
 
         return dict(
             actions=actions,

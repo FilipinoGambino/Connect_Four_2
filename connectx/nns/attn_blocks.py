@@ -109,13 +109,9 @@ class ViTBlock(nn.Module):
         logging.info(f'Finished making the ViT Block\n{self}')
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        logging.info(f"Inside ViT Block")
         identity = x
-        logging.info(f"Saved identity")
         x = self.mha(self.norm1(x))
-        logging.info(f"Normalized and multi-headed attention")
         x = x + identity
-        logging.info(f"Addition")
         return self.mlp(self.norm2(x)) + x
 
 

@@ -197,13 +197,13 @@ def act(
     try:
         logging.info(f"Actor {actor_index} started.")
         timings = prof.Timings()
-        logging.info(f"creating env (Actor={actor_index})")
+        # logging.info(f"creating env (Actor={actor_index})")
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
-        logging.info(f"getting env output (Actor={actor_index})")
+        # logging.info(f"getting env output (Actor={actor_index})")
         env_output = env.reset(force=True)
-        logging.info(f"getting agent output (Actor={actor_index})")
+        # logging.info(f"getting agent output (Actor={actor_index})")
         agent_output = actor_model(env_output)
-        logging.info(f"beginning loop (Actor={actor_index})")
+        # logging.info(f"beginning loop (Actor={actor_index})")
         while True:
             index = free_queue.get()
             if index is None:
@@ -239,7 +239,7 @@ def act(
             full_queue.put(index)
 
         if actor_index == 0:
-            logging.info("Actor %i: %s", actor_index, timings.summary())
+            logging.info(f"Actor {actor_index}: {timings.summary()}")
 
     except KeyboardInterrupt:
         pass  # Return silently.

@@ -13,7 +13,7 @@ project: ConnectX
 # The wandb user to log to
 entity: filipinogambino
 # The wandb group for the run
-group: debugging
+group: debug
 
 # Parameters to overwrite
 use_mixed_precision: False
