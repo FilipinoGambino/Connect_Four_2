@@ -17,7 +17,7 @@ group: debug
 
 # Parameters to overwrite
 use_mixed_precision: False
-total_steps: 1e5
+total_steps: 1e4
 batch_size: 8
 checkpoint_freq: 60.
 num_actors: 2
@@ -38,7 +38,7 @@ normalize: False
 debug: False
 
 # Environment params
-adversary: random
+adversary: negamax
 
 # Model params
 act_space: BasicActionSpace
@@ -65,7 +65,7 @@ reduction: mean
 # MISCELLANEOUS params
 actor_device: cpu
 learner_device: cpu
-disable_wandb: False
+disable_wandb: True
 model_log_freq: 100
 # file_descriptor or file_system
 sharing_strategy: file_descriptor
