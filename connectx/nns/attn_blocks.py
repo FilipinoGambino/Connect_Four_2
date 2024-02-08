@@ -106,7 +106,6 @@ class ViTBlock(nn.Module):
                 kernel_size=(1, 1)
             )
         )
-        logging.info(f'Finished making the ViT Block\n{self}')
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x

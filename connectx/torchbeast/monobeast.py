@@ -39,7 +39,7 @@ from .core.buffer_utils import Buffers, create_buffers, fill_buffers_inplace, st
 from ..connectx_gym import create_env
 from ..nns import create_model
 from ..utils import flags_to_namespace
-
+from contextlib import contextmanager
 
 KL_DIV_LOSS = nn.KLDivLoss(reduction="none")
 logging.basicConfig(
@@ -48,6 +48,15 @@ logging.basicConfig(
     ),
     level=0,
 )
+
+@contextmanager
+def acquire_timeout(lock, timeout):
+    result = lock.acquire(timeout=timeout)
+    try:
+        yield result
+    finally:
+        if result:
+            lock.release()
 
 
 class MyThread(threading.Thread):
@@ -285,7 +294,7 @@ def learn(
         lock=threading.Lock(),
 ) -> Tuple[Dict, int]:
     """Performs a learning (optimization) step."""
-    with lock:
+    with acquire_timeout(lock,30):
         try:
             with amp.autocast(enabled=flags.use_mixed_precision):
                 flattened_batch = buffers_apply(batch, lambda x: torch.flatten(x, start_dim=0, end_dim=1))
