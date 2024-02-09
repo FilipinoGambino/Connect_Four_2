@@ -6,10 +6,9 @@ import yaml
 import torch
 
 from connectx.utils import Stopwatch
-from connectx.connectx_gym import ConnectFour
+from connectx.connectx_gym import create_reward_space, ConnectFour, wrappers
 from connectx.nns import create_model, models
 from connectx.utils import flags_to_namespace
-from connectx.connectx_gym import create_env
 
 MODEL_CONFIG_PATH = Path(__file__).parent / "model_config.yaml"
 RL_AGENT_CONFIG_PATH = Path(__file__).parent / "rl_agent_config.yaml"
@@ -40,12 +39,12 @@ class RLAgent:
             obs_space=self.model_flags.obs_space(),
         )
         reward_space = create_reward_space(self.model_flags)
-        env = RewardSpaceWrapper(env, reward_space)
+        env = wrappers.RewardSpaceWrapper(env, reward_space)
         env = env.obs_space.wrap_env(env)
-        env = LoggingEnv(env, reward_space)
-        env = VecEnv([env])
-        env = PytorchEnv(env, device_id)
-        self.env = DictEnv(env)
+        env = wrappers.LoggingEnv(env, reward_space)
+        env = wrappers.VecEnv([env])
+        env = wrappers.PytorchEnv(env, device_id)
+        self.env = wrappers.DictEnv(env)
 
         self.action_placeholder = torch.ones(1)
 
@@ -60,12 +59,11 @@ class RLAgent:
         self.stopwatch.reset()
 
         self.stopwatch.start("Observation processing")
-        # self.preprocess(obs, conf)
-        # env_output = self.get_env_output()
-        # print(f'output: {env_output["obs"]}')
-        aam = self.env.unwrapped[0].action_space.get_available_actions_mask(obs)
-        relevant_env_output_augmented = {
-            "obs": env_output["obs"],
+        self.preprocess(obs, conf)
+
+        aam = self.unwrapped_env.action_space.get_available_actions_mask(self.board)
+        env_output = {
+            "obs": self.board,
             "info": {
                 "available_actions_mask": aam,
             },
@@ -73,7 +71,7 @@ class RLAgent:
 
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
-            outputs = self.model.select_best_actions(relevant_env_output_augmented)
+            outputs = self.model.select_best_actions(env_output)
             agent_output = {
                 "policy_logits": outputs["policy_logits"].cpu(),
                 "baseline": outputs["baseline"].cpu()
@@ -94,41 +92,38 @@ class RLAgent:
         timing_msg = f"{str(self.stopwatch)}"
         overage_time_msg = f"Remaining overage time: {obs['remainingOverageTime']:.2f}"
 
-        # actions.append(annotate.sidetext(value_msg))
         print(" - ".join([value_msg, timing_msg, overage_time_msg]))
         return actions
 
     def get_env_output(self):
         return self.env.step(self.action_placeholder)
 
+    def preprocess(self, obs, conf):
+        self.env.reset(configuration=conf)
+        self.game_state.update(obs)
+
     def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
         """
         Moves the predictions to the cpu, applies the inverse of all augmentations,
         and then returns the mean prediction for each available action.
         """
-        # if len(self.data_augmentations) == 0:
         return policy.cpu()
-
-        # policy_reoriented = [{key: val[0].unsqueeze(0) for key, val in policy.items()}]
-        # for i, augmentation in enumerate(self.data_augmentations):
-        #     augmented_policy = {key: val[i + 1].unsqueeze(0) for key, val in policy.items()}
-        #     policy_reoriented.append(augmentation.apply(augmented_policy, inverse=True, is_policy=True))
-        # return {
-        #     key: torch.cat([d[key] for d in policy_reoriented], dim=0).mean(dim=0, keepdim=True)
-        #     for key in policy.keys()
-        # }
 
     @property
     def unwrapped_env(self) -> ConnectFour:
-        return self.env.unwrapped[0]
+        return self.env.unwrapped
 
     @property
     def game_state(self):
-        return self.unwrapped_env.env.state
+        return self.unwrapped_env.game_state
 
-if __name__=="__main__":
-    from kaggle_environments import make
-    env = make('connectx')
-    agent = RLAgent(1)
+    @property
+    def board(self):
+        return self.unwrapped_env.board
 
-    env.play([agent, 'random'])
+# if __name__=="__main__":
+#     from kaggle_environments import make
+#     env = make('connectx')
+#     agent = RLAgent(1)
+#
+#     env.play([agent, 'random'])

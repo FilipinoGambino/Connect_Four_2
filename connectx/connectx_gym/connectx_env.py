@@ -28,32 +28,32 @@ class ConnectFour(gym.Env):
         else:
             self.configuration = make("connectx").configuration
 
-        self.game_state = Game()
+        self.game_state = Game(self.configuration)
         self.reward = 0.
         self.done = False
         self.info = dict()
 
     def reset(self, **kwargs):
-        self.game_state._initialize(self.configuration)
-        self._update_state()
+        config = kwargs.get('configuration', self.configuration)
+        self.game_state = Game(config)
         self.done = False
+        self.info['available_actions_mask'] = self.action_space.get_available_actions_mask(self.board)
+        return self.game_state, self.reward, self.done, self.info
 
-        return self.board, self.reward, self.done, self.info
+    def step(self, action):
+        self.game_state.step(action)
+        return self.game_state, self.reward, self.done, self.info
 
-    def step(self, observation):
-        self.game_state._update(observation)
-        self._update_state()
-        return self.board, self.reward, self.done, self.info
+    def update(self, observation):
+        self.game_state.update(observation)
+        self.info['available_actions_mask'] = self.action_space.get_available_actions_mask(self.board)
 
     def render(self, **kwargs):
         raise NotImplementedError
 
-    def _update_state(self):
-        self.info = {"available_actions_mask": self.action_space.get_available_actions_mask(self.board)}
-
     @property
     def turn(self):
-        return self.game_state.step
+        return self.game_state.turn
 
     @property
     def board(self):
@@ -62,3 +62,7 @@ class ConnectFour(gym.Env):
     @property
     def mark(self):
         return self.game_state.mark
+
+    @property
+    def max_turns(self):
+        return self.game_state.max_turns

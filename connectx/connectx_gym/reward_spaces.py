@@ -121,7 +121,7 @@ class MoreInARowReward(BaseRewardSpace):
 
     def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, bool]:
         if game_state.done:
-            return game_state.game_reward, game_state.done
+            return game_state.reward, game_state.done
         return self._compute_rewards(game_state), game_state.done
 
     def _compute_rewards(self, game_state: ConnectFour) -> float:

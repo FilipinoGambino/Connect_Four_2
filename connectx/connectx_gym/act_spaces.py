@@ -46,7 +46,7 @@ class BasicActionSpace(BaseActSpace):
 
     @staticmethod
     def get_available_actions_mask(game_state: np.ndarray) -> Dict[str, np.ndarray]:
-        available_actions_mask = np.array(game_state.all(axis=1), dtype=bool)
+        available_actions_mask = np.array(game_state.all(axis=0), dtype=bool)
         return available_actions_mask
 
 

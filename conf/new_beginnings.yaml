@@ -6,7 +6,7 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: new_beginnings
+name: vs_random_v2
 ## WANDB params
 # The wandb project name
 project: ConnectX
@@ -34,7 +34,7 @@ rescale_value_input: False
 obs_space_kwargs: {}
 reward_space_kwargs: {}
 normalize: False
-debug: False
+debug: True
 
 # Model params
 act_space: BasicActionSpace

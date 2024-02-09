@@ -3,9 +3,8 @@ import gym
 import numpy as np
 from typing import Dict, List, Tuple
 
-from ..connectx_game.game_constants import Constants
-
-BOARD_SIZE = Constants.BOARD_SIZE
+# from ..connectx_gym.connectx_env import ConnectFour
+from ..utility_constants import BOARD_SIZE
 
 class BaseObsSpace(ABC):
     # NB: Avoid using Discrete() space, as it returns a shape of ()
@@ -21,8 +20,6 @@ class BaseObsSpace(ABC):
     def wrap_env(self, env) -> gym.Wrapper:
         pass
 
-# class FixedShapeObs(BaseObsSpace, ABC):
-#     pass
 
 class BasicObsSpace(BaseObsSpace, ABC):
     def get_obs_spec(
@@ -63,12 +60,11 @@ class _BasicObsSpaceWrapper(gym.Wrapper):
         observation, reward, done, info = self.env.step(action)
         return self.observation(observation), reward, done, info
 
-    def observation(self, observation: Dict) -> Dict[str, np.ndarray]:
-        rows, cols = BOARD_SIZE
-        board = np.array(observation['board'], dtype=np.float32).reshape((rows, cols))
-        p1_mark = observation['mark']
+    def observation(self, observation: gym.Env) -> Dict[str, np.ndarray]:
+        board = observation.board
+        p1_mark = observation.mark
         p2_mark = max(1, (p1_mark + 1) % 3)
-        norm_turn = observation['step'] / (rows * cols)
+        norm_turn = observation.turn / observation.max_turns
         obs = {
             "filled_cells": np.where(board != 0, 1, 0),
             "empty_cells": np.where(board == 0, 1, 0),

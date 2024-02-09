@@ -68,7 +68,7 @@ class MyThread(threading.Thread):
 
     def run(self):
         try:
-            print('hi')
+            print('running thread')
             self.target(self.args)
         except Exception as e:
             print(f'An exception occured in thread "{self.name}":\n{e}')
@@ -708,6 +708,12 @@ def train(flags):
             },
             checkpoint_path + "_weights.pt"
         )
+        model_artifact = wandb.Artifact('model', type='model')
+        weights_artifact = wandb.Artifact('weights', type='weights')
+        model_artifact.add_file(checkpoint_path + ".pt")
+        weights_artifact.add_file(checkpoint_path + "_weights.pt")
+        wandb.log_artifact(model_artifact)
+        wandb.log_artifact(weights_artifact)
 
     timer = timeit.default_timer
     try:

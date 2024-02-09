@@ -1,17 +1,30 @@
 import numpy as np
 
 class Game:
-    def _initialize(self, conf):
+    def __init__(self, conf):
         self.board_shape = (conf['rows'], conf['columns'])
         self.board = np.zeros(self.board_shape)
         self.inarow = conf['inarow']
         self.max_turns = conf['rows'] * conf['columns']
+        self.remaining_time = conf['agentTimeout']
+        self.turn = 0
+        self.mark = 1 # Placeholder for buffers
 
-    def _update(self, obs):
+    def update(self, obs):
         self.remaining_time = obs['remainingOverageTime']
         self.board = np.array(obs['board']).reshape(self.board_shape)
-        self.step = obs['step']
+        self.turn = obs['step']
         self.mark = obs['mark']
+
+    def step(self, action):
+        row = self.get_lowest_available_row(action)
+        self.board[row, action] = self.mark
+
+    def get_lowest_available_row(self, column):
+        for row in range(self.board_shape[0]):
+            if self.board[row,column] != 0:
+                return row - 1
+        return self.board_shape[0] - 1
 
 
 if __name__=='__main__':
@@ -27,12 +40,11 @@ if __name__=='__main__':
     )
 
     def my_agent(observation, configuration):
-        game = Game()
-        game._initialize(configuration)
-        game._update(observation, configuration)
+        game = Game(configuration)
+        game.update(observation)
         logging.info(game.board)
         return choice([c for c in range(configuration.columns) if observation.board[c] == 0])
 
 
-    env = make('connectx')
+    config = make('connectx').configuration
     env.run([my_agent, 'random'])

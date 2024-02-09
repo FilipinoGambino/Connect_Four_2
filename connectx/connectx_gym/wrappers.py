@@ -101,12 +101,6 @@ class VecEnv(gym.Env):
     def close(self):
         return [env.close() for env in self.envs]
 
-    # def seed(self, seed: Optional[int] = None) -> list:
-    #     if seed is not None:
-    #         return [env.seed(seed + i) for i, env in enumerate(self.envs)]
-    #     else:
-    #         return [env.seed(seed) for i, env in enumerate(self.envs)]
-
     @property
     def unwrapped(self) -> List[gym.Env]:
         return [env.unwrapped for env in self.envs]
