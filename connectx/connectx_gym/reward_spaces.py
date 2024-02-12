@@ -105,18 +105,20 @@ class MoreInARowReward(BaseRewardSpace):
         )
     def __init__(self, **kwargs):
         super(MoreInARowReward, self).__init__(**kwargs)
+        self.search_length = IN_A_ROW - 1
 
-        horizontal_kernel = np.ones([1, IN_A_ROW], dtype=np.uint8)
+        horizontal_kernel = np.ones([1, self.search_length], dtype=np.uint8)
         vertical_kernel = np.transpose(horizontal_kernel)
-        diag1_kernel = np.eye(IN_A_ROW, dtype=np.uint8)
+        diag1_kernel = np.eye(self.search_length, dtype=np.uint8)
         diag2_kernel = np.fliplr(diag1_kernel)
 
-        self.victory_kernels = [
+        self.reward_kernels = [
             horizontal_kernel,
             vertical_kernel,
             diag1_kernel,
             diag2_kernel,
         ]
+
         self.base_reward = -1/math.prod(BOARD_SIZE)
 
     def compute_rewards(self, game_state: ConnectFour) -> Tuple[float, bool]:
@@ -125,8 +127,8 @@ class MoreInARowReward(BaseRewardSpace):
         return self._compute_rewards(game_state), game_state.done
 
     def _compute_rewards(self, game_state: ConnectFour) -> float:
-        for kernel in self.victory_kernels:
-            conv = convolve2d(game_state.board == game_state.mark, kernel, mode="valid")
-            if (conv==IN_A_ROW-1).any():
+        for kernel in self.reward_kernels:
+            conv = convolve2d(game_state.board == game_state.my_mark, kernel, mode="valid")
+            if np.max(conv) == self.search_length:
                 return .5
         return self.base_reward

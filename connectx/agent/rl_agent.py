@@ -12,7 +12,7 @@ from connectx.utils import flags_to_namespace
 
 MODEL_CONFIG_PATH = Path(__file__).parent / "model_config.yaml"
 RL_AGENT_CONFIG_PATH = Path(__file__).parent / "rl_agent_config.yaml"
-CHECKPOINT_PATH,_ = list(Path(__file__).parent.glob('*.pt'))
+# CHECKPOINT_PATH,_ = list(Path(__file__).parent.glob('*.pt'))
 AGENT = None
 
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -49,14 +49,16 @@ class RLAgent:
         self.action_placeholder = torch.ones(1)
 
         self.model = create_model(self.model_flags, self.device)
-        checkpoint_states = torch.load(CHECKPOINT_PATH, map_location=self.device)
-        self.model.load_state_dict(checkpoint_states["model_state_dict"])
+        # checkpoint_states = torch.load(CHECKPOINT_PATH, map_location=self.device)
+        # self.model.load_state_dict(checkpoint_states["model_state_dict"])
         self.model.eval()
 
         self.stopwatch = Stopwatch()
 
     def __call__(self, obs, conf):
         self.stopwatch.reset()
+        print(f"obs:\n{obs}")
+        print(f"conf:\n{conf}")
 
         self.stopwatch.start("Observation processing")
         self.preprocess(obs, conf)
@@ -121,9 +123,9 @@ class RLAgent:
     def board(self):
         return self.unwrapped_env.board
 
-# if __name__=="__main__":
-#     from kaggle_environments import make
-#     env = make('connectx')
-#     agent = RLAgent(1)
-#
-#     env.play([agent, 'random'])
+if __name__=="__main__":
+    from kaggle_environments import make
+    env = make('connectx', debug=True)
+
+    env.run([RLAgent(1), 'random'])
+    # print(env.steps)

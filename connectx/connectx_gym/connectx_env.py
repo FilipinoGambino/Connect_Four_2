@@ -34,6 +34,7 @@ class ConnectFour(gym.Env):
         self.info = dict()
 
     def reset(self, **kwargs):
+        print('resetting')
         config = kwargs.get('configuration', self.configuration)
         self.game_state = Game(config)
         self.done = False
