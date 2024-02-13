@@ -128,7 +128,7 @@ class MoreInARowReward(BaseRewardSpace):
 
     def _compute_rewards(self, game_state: ConnectFour) -> float:
         for kernel in self.reward_kernels:
-            conv = convolve2d(game_state.board == game_state.my_mark, kernel, mode="valid")
+            conv = convolve2d(game_state.board == game_state.mark, kernel, mode="valid")
             if np.max(conv) == self.search_length:
                 return .5
         return self.base_reward

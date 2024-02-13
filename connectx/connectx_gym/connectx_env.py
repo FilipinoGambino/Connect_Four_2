@@ -8,6 +8,15 @@ from .act_spaces import BaseActSpace
 from .obs_spaces import BaseObsSpace
 from ..connectx_game.game import Game
 
+import logging
+
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
+
 
 class ConnectFour(gym.Env):
     metadata = {'render_modes': ['human']}
@@ -34,7 +43,7 @@ class ConnectFour(gym.Env):
         self.info = dict()
 
     def reset(self, **kwargs):
-        print('resetting')
+        logging.info('Env Resetting')
         config = kwargs.get('configuration', self.configuration)
         self.game_state = Game(config)
         self.done = False
@@ -42,10 +51,12 @@ class ConnectFour(gym.Env):
         return self.game_state, self.reward, self.done, self.info
 
     def step(self, action):
+        logging.info('Env Stepping')
         self.game_state.step(action)
         return self.game_state, self.reward, self.done, self.info
 
     def update(self, observation):
+        logging.info('Env Updating')
         self.game_state.update(observation)
         self.info['available_actions_mask'] = self.action_space.get_available_actions_mask(self.board)
 

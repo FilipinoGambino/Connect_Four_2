@@ -113,7 +113,7 @@ class RLAgent:
 
     @property
     def unwrapped_env(self) -> ConnectFour:
-        return self.env.unwrapped
+        return self.env.unwrapped[0]
 
     @property
     def game_state(self):
