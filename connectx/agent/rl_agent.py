@@ -16,7 +16,7 @@ RL_AGENT_CONFIG_PATH = Path(__file__).parent / "rl_agent_config.yaml"
 AGENT = None
 
 os.environ["OMP_NUM_THREADS"] = "1"
-
+import numpy as np
 class RLAgent:
     def __init__(self, player_id):
         with open(MODEL_CONFIG_PATH, 'r') as file:
@@ -57,19 +57,9 @@ class RLAgent:
 
     def __call__(self, obs, conf):
         self.stopwatch.reset()
-        print(f"obs:\n{obs}")
-        print(f"conf:\n{conf}")
 
         self.stopwatch.start("Observation processing")
-        self.preprocess(obs, conf)
-
-        aam = self.unwrapped_env.action_space.get_available_actions_mask(self.board)
-        env_output = {
-            "obs": self.board,
-            "info": {
-                "available_actions_mask": aam,
-            },
-        }
+        env_output = self.env.reset(configuration=conf, observation=obs)
 
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
@@ -84,25 +74,21 @@ class RLAgent:
             ).view(*agent_output["policy_logits"].shape[:-1], -1)
 
 
-        actions = agent_output["action"]
+        action = agent_output["actions"].item()
 
         self.stopwatch.stop()
 
-
-        value = agent_output["baseline"].numpy()
-        value_msg = f"Turn: {self.game_state.turn} - Predicted value: {value:.2f}"
+        value = agent_output["baseline"].numpy().item(0)
+        value_msg = f"Turn: {obs['step']} - Predicted value: {value:.2f} | Column:{action} |"
         timing_msg = f"{str(self.stopwatch)}"
         overage_time_msg = f"Remaining overage time: {obs['remainingOverageTime']:.2f}"
 
         print(" - ".join([value_msg, timing_msg, overage_time_msg]))
-        return actions
+        print(np.array(obs['board']).reshape(6,7))
+        return action
 
     def get_env_output(self):
         return self.env.step(self.action_placeholder)
-
-    def preprocess(self, obs, conf):
-        self.env.reset(configuration=conf)
-        self.game_state.update(obs)
 
     def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
         """
@@ -128,4 +114,5 @@ if __name__=="__main__":
     env = make('connectx', debug=True)
 
     env.run([RLAgent(1), 'random'])
+    # env.play([RLAgent(1), None])
     # print(env.steps)

@@ -3,7 +3,7 @@ import gym
 import numpy as np
 from typing import Dict, List, Tuple
 
-# from ..connectx_gym.connectx_env import ConnectFour
+from ..connectx_game.game import Game
 from ..utility_constants import BOARD_SIZE
 
 class BaseObsSpace(ABC):
@@ -60,11 +60,11 @@ class _BasicObsSpaceWrapper(gym.Wrapper):
         observation, reward, done, info = self.env.step(action)
         return self.observation(observation), reward, done, info
 
-    def observation(self, observation: gym.Env) -> Dict[str, np.ndarray]:
+    def observation(self, observation: Game) -> Dict[str, np.ndarray]:
         board = observation.board
-        p1_mark = observation.mark
+        p1_mark = observation.current_player
         p2_mark = max(1, (p1_mark + 1) % 3)
-        norm_turn = observation.turn / observation.max_turns
+        norm_turn = observation.turn / observation.board.size
         obs = {
             "filled_cells": np.where(board != 0, 1, 0),
             "empty_cells": np.where(board == 0, 1, 0),

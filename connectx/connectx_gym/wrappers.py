@@ -44,13 +44,14 @@ class RewardSpaceWrapper(gym.Wrapper):
         super(RewardSpaceWrapper, self).__init__(env)
         self.reward_space = reward_space
 
-    def _get_rewards_and_done(self) -> Tuple[Tuple[float, float], bool]:
-        rewards, done = self.reward_space.compute_rewards(self.unwrapped)
+    def _get_rewards_and_done(self, player) -> Tuple[Tuple[float, float], bool]:
+        rewards, done = self.reward_space.compute_rewards(self.unwrapped.game_state, player)
         return rewards, done
 
     def reset(self, **kwargs):
         obs, _, _, info = super(RewardSpaceWrapper, self).reset(**kwargs)
-        return obs, *self._get_rewards_and_done(), info
+        player = obs.current_player
+        return obs, *self._get_rewards_and_done(player), info
 
     def step(self, action):
         obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
