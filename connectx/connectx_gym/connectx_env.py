@@ -28,6 +28,7 @@ class ConnectFour(gym.Env):
             act_space: BaseActSpace,
             obs_space: BaseObsSpace,
             configuration: Optional[Dict[str, Any]] = None,
+            autoplay: bool = True
     ):
         super(ConnectFour, self).__init__()
         self.action_space = act_space
@@ -39,11 +40,15 @@ class ConnectFour(gym.Env):
         else:
             self.configuration = make("connectx").configuration
 
+        self.autoplay = autoplay
+
         self.game_state = Game()
 
     def reset(self, **kwargs):
-        assert kwargs.get('configuration', None) == self.configuration
-        self.game_state.update(kwargs['observation'])
+        # assert kwargs.get('configuration', None) == self.configuration
+        self.game_state = Game()
+        if not self.autoplay:
+            self.game_state.update(kwargs['observation'])
         return self.get_obs_reward_done_info()
 
     def step(self, action):
@@ -57,10 +62,7 @@ class ConnectFour(gym.Env):
         )
 
     def get_obs_reward_done_info(self):
-        rewards, done = self.default_reward_space.compute_rewards(
-            game_state=self.game_state,
-            player=self.active_player-1
-        )
+        rewards, done = self.default_reward_space.compute_rewards(game_state=self.game_state)
         return self.game_state, rewards, done, self.info(rewards)
 
     def render(self, **kwargs):
@@ -82,11 +84,3 @@ class ConnectFour(gym.Env):
     @property
     def turn(self):
         return self.game_state.turn
-
-    @property
-    def active_player(self):
-        return self.game_state.current_player
-
-    @property
-    def inactive_player(self):
-        return max(1, (self.active_player + 1) % 3)

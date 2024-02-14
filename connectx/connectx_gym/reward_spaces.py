@@ -29,7 +29,7 @@ class BaseRewardSpace(ABC):
         pass
 
     @abstractmethod
-    def compute_rewards(self, game_state: Game, player: int) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards(self, game_state: Game) -> Tuple[Tuple[float, float], bool]:
         pass
 
     def get_info(self) -> Dict[str, np.ndarray]:
@@ -41,11 +41,11 @@ class FullGameRewardSpace(BaseRewardSpace):
     """
     A class used for defining a reward space for the full game.
     """
-    def compute_rewards(self, game_state: Game, player: int) -> Tuple[Tuple[float, float], bool]:
+    def compute_rewards(self, game_state: Game) -> Tuple[Tuple[float, float], bool]:
         pass
 
     @abstractmethod
-    def _compute_rewards(self, game_state: Game, player: int) -> Tuple[float, float]:
+    def _compute_rewards(self, game_state: Game) -> Tuple[float, float]:
         pass
 
 
@@ -62,15 +62,19 @@ class GameResultReward(FullGameRewardSpace):
     def __init__(self, **kwargs):
         super(GameResultReward, self).__init__(**kwargs)
 
-    def compute_rewards(self, game_state: Game, player: int) -> Tuple[float, bool]:
-        if not game_state.game_end():
-            return [0., 0.], False
-        return self._compute_rewards(game_state, player), True
+    def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
+        s = game_state.turn
+        players=
+        active_player = game_state.players[0].active(s)
+        result = game_state.game_end()
+        if result == 'No Winner':
+            return 0., False
+        elif result == game_state.turn
+        rewards = [1. if result==idx else -1. for idx in range(1,3)]
+        return rewards, True
 
-    def _compute_rewards(self, game_state: Game, player: int) -> float:
-        rewards = [-1., -1.]
-        rewards[player] = 1.
-        return rewards
+    def _compute_rewards(self, game_state: Game) -> float:
+        raise NotImplementedError
 
 class LongGameReward(BaseRewardSpace):
     @staticmethod
@@ -85,7 +89,7 @@ class LongGameReward(BaseRewardSpace):
         super(LongGameReward, self).__init__(**kwargs)
         self.board_size = math.prod(BOARD_SIZE)
 
-    def compute_rewards(self, game_state: Game, player: int) -> Tuple[float, bool]:
+    def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
         return self._compute_rewards(game_state), game_state.done
 
     def _compute_rewards(self, game_state: Game) -> float:
@@ -119,7 +123,7 @@ class MoreInARowReward(BaseRewardSpace):
 
         self.base_reward = -1/math.prod(BOARD_SIZE)
 
-    def compute_rewards(self, game_state: Game, player: int) -> Tuple[float, bool]:
+    def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
         if game_state.done:
             return game_state.reward, game_state.done
         return self._compute_rewards(game_state), game_state.done

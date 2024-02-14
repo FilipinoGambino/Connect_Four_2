@@ -9,7 +9,14 @@ from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, Union
 from .in_blocks import DictInputLayer
 from ..connectx_gym.reward_spaces import RewardSpec
 from ..utility_constants import BOARD_SIZE
+import logging
 
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
 
 class DictActor(nn.Module):
     def __init__(
@@ -184,7 +191,6 @@ class BasicActorCriticNetwork(nn.Module):
     ) -> Dict[str, Any]:
         x, available_actions_mask, subtask_embeddings = self.dict_input_layer(x)
         base_out = self.base_model(x)
-
         if subtask_embeddings is not None:
             subtask_embeddings = torch.repeat_interleave(subtask_embeddings, 2, dim=0)
 
@@ -194,7 +200,6 @@ class BasicActorCriticNetwork(nn.Module):
             sample=sample,
             **actor_kwargs
         )
-
         baseline = self.baseline(self.baseline_base(base_out))
 
         return dict(

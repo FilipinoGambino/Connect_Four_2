@@ -224,9 +224,10 @@ def act(
                 timings.reset()
                 agent_output = actor_model(env_output)
                 timings.time("model")
-
+                logging.info("stepping")
                 env_output = env.step(agent_output["actions"])
                 if env_output["done"].any():
+                    logging.info("done")
                     # Cache reward, done, and info["actions_taken"] from the terminal step
                     cached_reward = env_output["reward"]
                     cached_done = env_output["done"]
@@ -240,9 +241,19 @@ def act(
                     env_output["done"] = cached_done
                     # env_output["info"]["actions_taken"] = cached_info_actions_taken
                     env_output["info"].update(cached_info_logging)
+                logging.info("done stepping")
                 timings.time("step")
-
+                logging.info("filling buffers")
+                for key,val in env_output.items():
+                    if isinstance(val, dict):
+                        for k,v in val.items():
+                            logging.info(f"{k}: {v.shape}")
+                    else:
+                        logging.info(f"{key}: {val.shape}")
+                for key,val in agent_output.items():
+                    logging.info(f"{key}: {val.shape}")
                 fill_buffers_inplace(buffers[index], dict(**env_output, **agent_output), t + 1)
+                logging.info("done filling buffers")
                 timings.time("write")
             full_queue.put(index)
 
