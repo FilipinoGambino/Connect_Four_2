@@ -17,10 +17,10 @@ group: debug
 
 # Parameters to overwrite
 use_mixed_precision: False
-total_steps: 1e5
+total_steps: 2e5
 batch_size: 8
 checkpoint_freq: 60.
-num_actors: 2
+num_actors: 1
 n_actor_envs: 16
 unroll_length: 16
 seed: 42

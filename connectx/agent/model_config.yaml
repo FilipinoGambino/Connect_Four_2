@@ -22,7 +22,7 @@ batch_size: 8
 checkpoint_freq: 60.
 num_actors: 2
 n_actor_envs: 16
-unroll_length: 16
+unroll_length: 42
 seed: 42
 model_arch: vit_model
 embedding_dim: 32

@@ -62,14 +62,14 @@ class _BasicObsSpaceWrapper(gym.Wrapper):
 
     def observation(self, observation: Game) -> Dict[str, np.ndarray]:
         board = observation.board
-        p1_mark = observation.players[0]
-        p2_mark = observation.players[1]
+        p1 = observation.active_player
+        p2 = observation.inactive_player
         norm_turn = observation.turn / observation.board.size
         obs = {
             "filled_cells": np.where(board != 0, 1, 0),
             "empty_cells": np.where(board == 0, 1, 0),
-            "p1_cells": np.where(board == p1_mark, 1, 0),
-            "p2_cells": np.where(board == p2_mark, 1, 0),
+            "p1_cells": np.where(board == p1.mark, 1, 0),
+            "p2_cells": np.where(board == p2.mark, 1, 0),
             "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
         }
         return obs

@@ -1,3 +1,4 @@
+import numpy as np
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -12,11 +13,11 @@ from connectx.utils import flags_to_namespace
 
 MODEL_CONFIG_PATH = Path(__file__).parent / "model_config.yaml"
 RL_AGENT_CONFIG_PATH = Path(__file__).parent / "rl_agent_config.yaml"
-# CHECKPOINT_PATH,_ = list(Path(__file__).parent.glob('*.pt'))
+CHECKPOINT_PATH,_ = list(Path(__file__).parent.glob('*.pt'))
 AGENT = None
 
 os.environ["OMP_NUM_THREADS"] = "1"
-import numpy as np
+
 class RLAgent:
     def __init__(self, player_id):
         with open(MODEL_CONFIG_PATH, 'r') as file:
@@ -50,8 +51,8 @@ class RLAgent:
         self.action_placeholder = torch.ones(1)
 
         self.model = create_model(self.model_flags, self.device)
-        # checkpoint_states = torch.load(CHECKPOINT_PATH, map_location=self.device)
-        # self.model.load_state_dict(checkpoint_states["model_state_dict"])
+        checkpoint_states = torch.load(CHECKPOINT_PATH, map_location=self.device)
+        self.model.load_state_dict(checkpoint_states["model_state_dict"])
         self.model.eval()
 
         self.stopwatch = Stopwatch()
@@ -114,6 +115,6 @@ if __name__=="__main__":
     from kaggle_environments import make
     env = make('connectx', debug=True)
 
-    env.run([RLAgent(1), 'random'])
+    env.run([RLAgent(1), 'negamax'])
     # env.play([RLAgent(1), None])
     # print(env.steps)

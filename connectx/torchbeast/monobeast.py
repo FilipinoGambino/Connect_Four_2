@@ -211,6 +211,8 @@ def act(
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
 
         env_output = env.reset(force=True)
+        # board = env_output['obs']['p1_cells'][0] + (env_output['obs']['p2_cells'][0] * 2)
+        # logging.info(f"Resetting\n{board}")
         agent_output = actor_model(env_output)
 
         while True:
@@ -224,10 +226,10 @@ def act(
                 timings.reset()
                 agent_output = actor_model(env_output)
                 timings.time("model")
-                logging.info("stepping")
+
                 env_output = env.step(agent_output["actions"])
                 if env_output["done"].any():
-                    logging.info("done")
+
                     # Cache reward, done, and info["actions_taken"] from the terminal step
                     cached_reward = env_output["reward"]
                     cached_done = env_output["done"]
@@ -239,21 +241,13 @@ def act(
                     env_output = env.reset()
                     env_output["reward"] = cached_reward
                     env_output["done"] = cached_done
-                    # env_output["info"]["actions_taken"] = cached_info_actions_taken
+
                     env_output["info"].update(cached_info_logging)
-                logging.info("done stepping")
+
+                # board = env_output['obs']['p1_cells'][0] + (env_output['obs']['p2_cells'][0] * 2)
+                # logging.info(f"After stepping\n{board}")
                 timings.time("step")
-                logging.info("filling buffers")
-                for key,val in env_output.items():
-                    if isinstance(val, dict):
-                        for k,v in val.items():
-                            logging.info(f"{k}: {v.shape}")
-                    else:
-                        logging.info(f"{key}: {val.shape}")
-                for key,val in agent_output.items():
-                    logging.info(f"{key}: {val.shape}")
                 fill_buffers_inplace(buffers[index], dict(**env_output, **agent_output), t + 1)
-                logging.info("done filling buffers")
                 timings.time("write")
             full_queue.put(index)
 
@@ -342,10 +336,10 @@ def learn(
                 combined_learner_entropy = torch.zeros_like(combined_behavior_action_log_probs)
                 entropies = {}
 
-                actions = batch["actions"]#[act_space]
-                actions_taken_mask = batch["info"]["available_actions_mask"].squeeze(-2)#[act_space]
+                actions = batch["actions"]
+                actions_taken_mask = batch["info"]["available_actions_mask"].squeeze(-2)
 
-                behavior_policy_logits = batch["policy_logits"]#[act_space]
+                behavior_policy_logits = batch["policy_logits"]
                 behavior_action_log_probs = combine_policy_logits_to_log_probs(
                     behavior_policy_logits,
                     actions,
@@ -354,7 +348,7 @@ def learn(
 
                 combined_behavior_action_log_probs = combined_behavior_action_log_probs + behavior_action_log_probs
 
-                learner_policy_logits = learner_outputs["policy_logits"]#[act_space]
+                learner_policy_logits = learner_outputs["policy_logits"]
                 learner_action_log_probs = combine_policy_logits_to_log_probs(
                     learner_policy_logits,
                     actions,
@@ -367,13 +361,13 @@ def learn(
                 if flags.use_teacher:
                     teacher_kl_loss = compute_teacher_kl_loss(
                         learner_policy_logits,
-                        teacher_outputs["policy_logits"],#[act_space],
+                        teacher_outputs["policy_logits"],
                         any_actions_taken
                     )
                 else:
                     teacher_kl_loss = torch.zeros_like(combined_teacher_kl_loss)
                 combined_teacher_kl_loss = combined_teacher_kl_loss + teacher_kl_loss
-                # teacher_kl_losses[act_space] = (reduce(
+
                 teacher_kl_losses = (reduce(
                     teacher_kl_loss,
                     reduction="sum",
@@ -385,7 +379,7 @@ def learn(
                 )
 
                 combined_learner_entropy = combined_learner_entropy + learner_policy_entropy
-                # entropies[act_space] = -(reduce(
+
                 entropies = -(reduce(
                     learner_policy_entropy,
                     reduction="sum"

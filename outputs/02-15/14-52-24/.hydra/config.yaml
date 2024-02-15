@@ -3,10 +3,10 @@ project: ConnectX
 entity: filipinogambino
 group: debug
 use_mixed_precision: false
-total_steps: 200000.0
+total_steps: 100000.0
 batch_size: 8
 checkpoint_freq: 60.0
-num_actors: 1
+num_actors: 2
 n_actor_envs: 16
 unroll_length: 16
 seed: 42
@@ -39,13 +39,3 @@ learner_device: cpu
 disable_wandb: true
 model_log_freq: 100
 sharing_strategy: file_descriptor
-num_buffers: 2
-discounting: 0.999
-clip_grads: 10.0
-num_learner_threads: 1
-use_teacher: false
-teacher_baseline_cost: 0.0
-load_dir: null
-checkpoint_file: null
-weights_only: false
-n_value_warmup_batches: 0

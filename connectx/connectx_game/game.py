@@ -44,3 +44,13 @@ class Game:
             if np.max(convolutions2) == IN_A_ROW:
                 return p2
         return 'No Winner'
+
+    @property
+    def active_player(self):
+        turn = self.board.size - np.count_nonzero(self.board==0)
+        return self.players[turn % 2]
+
+    @property
+    def inactive_player(self):
+        turn = self.board.size - np.count_nonzero(self.board==0)
+        return self.players[(turn + 1) % 2]

@@ -63,15 +63,17 @@ class GameResultReward(FullGameRewardSpace):
         super(GameResultReward, self).__init__(**kwargs)
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
-        s = game_state.turn
-        players =
-        active_player = game_state.players[0].active(s)
+        active_player = game_state.active_player
         result = game_state.game_end()
         if result == 'No Winner':
             reward = 0.
             done = False
-        elif result == 'Player 1'
-        rewards = [1. if result==idx else -1. for idx in range(1,3)]
+        elif result == active_player:
+            reward = 1.
+            done = True
+        else:
+            reward = -1.
+            done = True
         return reward, done
 
     def _compute_rewards(self, game_state: Game) -> float:
@@ -91,7 +93,8 @@ class LongGameReward(BaseRewardSpace):
         self.board_size = math.prod(BOARD_SIZE)
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
-        return self._compute_rewards(game_state), game_state.done
+        done = game_state.game_end() != "No Winner"
+        return self._compute_rewards(game_state), done
 
     def _compute_rewards(self, game_state: Game) -> float:
         return game_state.turn / self.board_size
