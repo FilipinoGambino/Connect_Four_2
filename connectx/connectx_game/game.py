@@ -34,13 +34,13 @@ class Game:
         raise StopIteration(f"Column {column} is full. {self.board[:,column]}")
 
     def game_end(self):
-        mark1 = self.players[0].mark
-        mark2 = self.players[1].mark
+        p1 = self.players[0]
+        p2 = self.players[1]
         for kernel in VICTORY_KERNELS:
-            convolutions1 = convolve2d(self.board == mark1, kernel, mode="valid")
-            convolutions2 = convolve2d(self.board == mark2, kernel, mode="valid")
+            convolutions1 = convolve2d(self.board == p1.mark, kernel, mode="valid")
+            convolutions2 = convolve2d(self.board == p2.mark, kernel, mode="valid")
             if np.max(convolutions1) == IN_A_ROW:
-                return 'Player 1'
+                return p1
             if np.max(convolutions2) == IN_A_ROW:
-                return 'Player 2'
+                return p2
         return 'No Winner'

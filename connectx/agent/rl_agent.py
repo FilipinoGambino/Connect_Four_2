@@ -37,6 +37,7 @@ class RLAgent:
         env = ConnectFour(
             act_space=self.model_flags.act_space(),
             obs_space=self.model_flags.obs_space(),
+            autoplay=False
         )
         reward_space = create_reward_space(self.model_flags)
         env = wrappers.RewardSpaceWrapper(env, reward_space)

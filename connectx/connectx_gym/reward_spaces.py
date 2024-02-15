@@ -64,14 +64,15 @@ class GameResultReward(FullGameRewardSpace):
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
         s = game_state.turn
-        players=
+        players =
         active_player = game_state.players[0].active(s)
         result = game_state.game_end()
         if result == 'No Winner':
-            return 0., False
-        elif result == game_state.turn
+            reward = 0.
+            done = False
+        elif result == 'Player 1'
         rewards = [1. if result==idx else -1. for idx in range(1,3)]
-        return rewards, True
+        return reward, done
 
     def _compute_rewards(self, game_state: Game) -> float:
         raise NotImplementedError
