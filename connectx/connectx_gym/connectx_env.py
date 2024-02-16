@@ -45,7 +45,6 @@ class ConnectFour(gym.Env):
         self.game_state = Game()
 
     def reset(self, **kwargs):
-        # assert kwargs.get('configuration', None) == self.configuration
         self.game_state = Game()
         if not self.autoplay:
             self.game_state.update(kwargs['observation'])

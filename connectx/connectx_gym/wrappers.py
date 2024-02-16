@@ -1,24 +1,28 @@
 import copy
 import gym
+import math
 import numpy as np
 import torch
 from typing import Dict, List, Union, Tuple
 
 from .reward_spaces import BaseRewardSpace
 
-
 class LoggingEnv(gym.Wrapper):
     def __init__(self, env: gym.Env, reward_space: BaseRewardSpace):
         super(LoggingEnv, self).__init__(env)
         self.reward_space = reward_space
         self.vals_peak = {}
-        self.reward_sum = []
+        self.reward_sum = [0., 0.]
 
-    def info(self, info: Dict[str, np.ndarray], rewards: int) -> Dict[str, np.ndarray]:
+    def info(self, info: Dict[str, np.ndarray], reward: int) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
-        logs = dict(step=self.env.unwrapped.turn)
+        if math.isnan(self.env.unwrapped.turn):
+            step = 0
+        else:
+            step = self.env.unwrapped.turn - 1
+        logs = dict(step=step)
 
-        self.reward_sum.append(rewards)
+        self.reward_sum[step % 2] = reward
         logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
         logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
         logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
@@ -31,7 +35,7 @@ class LoggingEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
-        self.reward_sum = []
+        self.reward_sum = [0., 0.]
         return obs, [reward], done, self.info(info, reward)
 
     def step(self, action: Dict[str, np.ndarray]):

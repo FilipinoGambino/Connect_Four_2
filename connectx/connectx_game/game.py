@@ -3,7 +3,7 @@ from scipy.signal import convolve2d
 import logging
 
 from ..connectx_game.game_objects import Player
-from ..utility_constants import BOARD_SIZE, IN_A_ROW, VICTORY_KERNELS
+from ..utility_constants import BOARD_SIZE, IN_A_ROW, VICTORY_KERNELS, GAME_STATUS
 
 logging.basicConfig(
     format=(
@@ -33,24 +33,34 @@ class Game:
                 return row
         raise StopIteration(f"Column {column} is full. {self.board[:,column]}")
 
-    def game_end(self):
-        p1 = self.players[0]
-        p2 = self.players[1]
+    def should_win(self, active, inactive):
         for kernel in VICTORY_KERNELS:
-            convolutions1 = convolve2d(self.board == p1.mark, kernel, mode="valid")
-            convolutions2 = convolve2d(self.board == p2.mark, kernel, mode="valid")
+            convolutions1 = convolve2d(self.board == active.mark, kernel, mode="valid")
+            convolutions2 = convolve2d(self.board == inactive.mark, kernel, mode="valid")
+            can_win = (convolutions1 == 0) * convolutions2
+
             if np.max(convolutions1) == IN_A_ROW:
-                return p1
-            if np.max(convolutions2) == IN_A_ROW:
-                return p2
-        return 'No Winner'
+                return GAME_STATUS['ACTIVE_PLAYER_WINS']
+            elif np.max(can_win) == (IN_A_ROW - 1):
+                return GAME_STATUS['UNDEFENDED_POSITION']
+        return GAME_STATUS['NO_WINNING_MOVE']
 
     @property
     def active_player(self):
-        turn = self.board.size - np.count_nonzero(self.board==0)
+        '''
+        Only called after step which increments turn
+        :return: The active player object
+        '''
+        assert self.turn == self.board.size - np.count_nonzero(self.board==0)
+        turn = self.turn - 1
         return self.players[turn % 2]
 
     @property
     def inactive_player(self):
-        turn = self.board.size - np.count_nonzero(self.board==0)
+        '''
+        Only called after step which increments turn
+        :return: The inactive player object
+        '''
+        assert self.turn == self.board.size - np.count_nonzero(self.board==0)
+        turn = self.turn - 1
         return self.players[(turn + 1) % 2]

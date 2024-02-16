@@ -338,6 +338,7 @@ def learn(
 
                 actions = batch["actions"]
                 actions_taken_mask = batch["info"]["available_actions_mask"].squeeze(-2)
+                logging.info(actions_taken_mask)
 
                 behavior_policy_logits = batch["policy_logits"]
                 behavior_action_log_probs = combine_policy_logits_to_log_probs(

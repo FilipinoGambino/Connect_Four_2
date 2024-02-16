@@ -6,7 +6,7 @@ from scipy.signal import convolve2d
 from typing import NamedTuple, Tuple, Dict
 
 from ..connectx_game.game import Game
-from ..utility_constants import BOARD_SIZE, IN_A_ROW
+from ..utility_constants import BOARD_SIZE, IN_A_ROW, GAME_STATUS
 
 class RewardSpec(NamedTuple):
     reward_min: float
@@ -55,7 +55,7 @@ class GameResultReward(FullGameRewardSpace):
         return RewardSpec(
             reward_min=-1.,
             reward_max=1.,
-            zero_sum=True,
+            zero_sum=False,
             only_once=True
         )
 
@@ -63,17 +63,21 @@ class GameResultReward(FullGameRewardSpace):
         super(GameResultReward, self).__init__(**kwargs)
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
-        active_player = game_state.active_player
-        result = game_state.game_end()
-        if result == 'No Winner':
-            reward = 0.
-            done = False
-        elif result == active_player:
+        p1,p2 = game_state.players
+        if p1.active(game_state.turn - 1):
+            result = game_state.should_win(p1,p2)
+        elif p2.active(game_state.turn - 1):
+            result = game_state.should_win(p1, p2)
+
+        if result == GAME_STATUS['ACTIVE_PLAYER_WINS']:
             reward = 1.
             done = True
-        else:
+        elif result == GAME_STATUS['UNDEFENDED_POSITION']:
             reward = -1.
-            done = True
+            done = False
+        elif result == GAME_STATUS['NO_WINNING_MOVE']:
+            reward = 1/42
+            done = False
         return reward, done
 
     def _compute_rewards(self, game_state: Game) -> float:
@@ -128,13 +132,12 @@ class MoreInARowReward(BaseRewardSpace):
         self.base_reward = -1/math.prod(BOARD_SIZE)
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
-        if game_state.done:
-            return game_state.reward, game_state.done
         return self._compute_rewards(game_state), game_state.done
 
     def _compute_rewards(self, game_state: Game) -> float:
+        player = game_state.active_player
+        count = 1
         for kernel in self.reward_kernels:
-            conv = convolve2d(game_state.board == game_state.mark, kernel, mode="valid")
-            if np.max(conv) == self.search_length:
-                return .5
-        return self.base_reward
+            conv = convolve2d(game_state.board == player.mark, kernel, mode="valid")
+            count += np.count_nonzero(conv == self.search_length)
+        return math.log10(count)
