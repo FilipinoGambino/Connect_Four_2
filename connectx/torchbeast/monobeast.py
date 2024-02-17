@@ -429,7 +429,7 @@ def learn(
                 combined_teacher_kl_loss,
                 reduction=flags.reduction
             )
-            # logging.info(f"\freduced loss {teacher_kl_loss.shape}:\f{teacher_kl_loss}")
+
             if flags.use_teacher:
                 teacher_baseline_loss = flags.teacher_baseline_cost * compute_baseline_loss(
                     values,
@@ -462,7 +462,7 @@ def learn(
 
             stats = {
                 "Env": {
-                    key[8:]: val[batch["done"]][~val[batch["done"]].isnan()].item()
+                    key[8:]: val[batch["done"]][~val[batch["done"]].isnan()].mean().item()
                     for key, val in batch["info"].items()
                     if key.startswith("LOGGING_") and "ACTIONS_" not in key
                 },

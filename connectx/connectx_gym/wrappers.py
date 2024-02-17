@@ -7,6 +7,15 @@ from typing import Dict, List, Union, Tuple
 
 from .reward_spaces import BaseRewardSpace
 
+import logging
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
+
+
 class LoggingEnv(gym.Wrapper):
     def __init__(self, env: gym.Env, reward_space: BaseRewardSpace):
         super(LoggingEnv, self).__init__(env)
@@ -17,12 +26,14 @@ class LoggingEnv(gym.Wrapper):
     def info(self, info: Dict[str, np.ndarray], reward: int) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
         if math.isnan(self.env.unwrapped.turn):
+            logging.info('turn was nan')
             step = 0
         else:
             step = self.env.unwrapped.turn - 1
         logs = dict(step=step)
 
         self.reward_sum[step % 2] = reward
+        # logs["debugging rewards"] = self.reward_sum
         logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
         logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
         logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
