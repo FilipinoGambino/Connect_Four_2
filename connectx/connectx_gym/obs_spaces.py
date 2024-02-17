@@ -20,6 +20,44 @@ class BaseObsSpace(ABC):
     def wrap_env(self, env) -> gym.Wrapper:
         pass
 
+class MultiObs(BaseObsSpace):
+    def __init__(self, named_obs_spaces: Dict[str, BaseObsSpace], *args, **kwargs):
+        super(MultiObs, self).__init__(*args, **kwargs)
+        self.named_obs_spaces = named_obs_spaces
+
+    def get_obs_spec(
+            self,
+            board_dims: Tuple[int, int] = BOARD_SIZE
+    ) -> gym.spaces.Dict:
+        return gym.spaces.Dict({
+            name + key: val
+            for name, obs_space in self.named_obs_spaces.items()
+            for key, val in obs_space.get_obs_spec(board_dims).spaces.items()
+        })
+
+    def wrap_env(self, env) -> gym.Wrapper:
+        return _MultiObsWrapper(env, self.named_obs_spaces)
+
+
+class _MultiObsWrapper(gym.Wrapper):
+    def __init__(self, env, named_obs_spaces: Dict[str, BaseObsSpace]):
+        super(_MultiObsWrapper, self).__init__(env)
+        self.named_obs_space_wrappers = {key: val.wrap_env(env) for key, val in named_obs_spaces.items()}
+
+    def reset(self, **kwargs):
+        observation, reward, done, info = self.env.reset(**kwargs)
+        return self.observation(observation), reward, done, info
+
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        return self.observation(observation), reward, done, info
+
+    def observation(self, observation: Game) -> Dict[str, np.ndarray]:
+        return {
+            name + key: val
+            for name, obs_space in self.named_obs_space_wrappers.items()
+            for key, val in obs_space.observation(observation).items()
+        }
 
 class BasicObsSpace(BaseObsSpace, ABC):
     def get_obs_spec(

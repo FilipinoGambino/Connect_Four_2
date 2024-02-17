@@ -60,7 +60,7 @@ def get_default_flags(flags: DictConfig) -> DictConfig:
     return OmegaConf.create(flags)
 
 
-@hydra.main(config_path="conf", config_name="new_beginnings", version_base=None)
+@hydra.main(config_path="conf", config_name="student_phase1", version_base=None)
 def main(flags: DictConfig):
     cli_conf = OmegaConf.from_cli()
     #TODO add this back?\/
@@ -81,7 +81,7 @@ def main(flags: DictConfig):
 
     flags = get_default_flags(flags)
     logging.info(OmegaConf.to_yaml(flags, resolve=True))
-    OmegaConf.save(flags, "config.yaml")
+    OmegaConf.save(flags, "outputs/02-16/16-20-21/config.yaml")
     flags = flags_to_namespace(OmegaConf.to_container(flags))
     if not flags.disable_wandb:
         wandb.init(
@@ -92,7 +92,6 @@ def main(flags: DictConfig):
             name=flags.name,
         )
 
-    # flags = flags_to_namespace(OmegaConf.to_container(flags))
     # mp.set_sharing_strategy(flags.sharing_strategy)
     train(flags)
 

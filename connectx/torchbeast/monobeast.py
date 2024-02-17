@@ -129,22 +129,23 @@ def combine_policy_entropy(
     NB: We are just computing the sum of individual entropies, not the joint entropy, because I don't think there is
     an efficient way to compute the joint entropy?
 
-    Initial shape: time, batch, action_planes, players, x, y, n_actions
-    Returned shape: time, batch, players
+    Initial shape: time, batch, n_actions
+    Returned shape: time, batch
     """
     policy = F.softmax(policy_logits, dim=-1)
     log_policy = F.log_softmax(policy_logits, dim=-1)
+
     log_policy_masked_zeroed = torch.where(
         log_policy.isneginf(),
         torch.zeros_like(log_policy),
         log_policy
     )
-    entropies = (policy * log_policy_masked_zeroed).sum(dim=-1)
+    entropies = (policy * log_policy_masked_zeroed)
+
     assert actions_taken_mask.shape == entropies.shape
-    entropies_masked = entropies * actions_taken_mask.float()
+    entropies_masked = entropies# * actions_taken_mask.float()
     # Sum over y, x, and action_planes dimensions to combine entropies from different actions
-    # return entropies_masked.sum(dim=-1).sum(dim=-1).squeeze(dim=-2)
-    return entropies_masked.unsqueeze(-1)
+    return entropies_masked#.sum(dim=-1)
 
 
 def compute_teacher_kl_loss(
@@ -154,16 +155,16 @@ def compute_teacher_kl_loss(
 ) -> torch.Tensor:
     learner_policy_log_probs = F.log_softmax(learner_policy_logits, dim=-1)
     teacher_policy = F.softmax(teacher_policy_logits, dim=-1)
+
     kl_div = F.kl_div(
         learner_policy_log_probs,
         teacher_policy.detach(),
         reduction="none",
         log_target=False
-    ).sum(dim=-1)
+    )
     assert actions_taken_mask.shape == kl_div.shape
-    kl_div_masked = kl_div * actions_taken_mask.float()
-    # Sum over y, x, and action_planes dimensions to combine kl divergences from different actions
-    # return kl_div_masked.sum(dim=-1).sum(dim=-1).squeeze(dim=-2)
+    kl_div_masked = kl_div# * actions_taken_mask.float()
+
     return kl_div_masked
 
 
@@ -316,7 +317,6 @@ def learn(
                                                                                           *x.shape[1:]))
                 else:
                     teacher_outputs = None
-
                 # Take final value function slice for bootstrapping.
                 bootstrap_value = learner_outputs["baseline"][-1]
 
@@ -332,13 +332,10 @@ def learn(
                 )
                 combined_learner_action_log_probs = torch.zeros_like(combined_behavior_action_log_probs)
                 combined_teacher_kl_loss = torch.zeros_like(combined_behavior_action_log_probs)
-                teacher_kl_losses = {}
                 combined_learner_entropy = torch.zeros_like(combined_behavior_action_log_probs)
-                entropies = {}
 
                 actions = batch["actions"]
-                actions_taken_mask = batch["info"]["available_actions_mask"].squeeze(-2)
-                logging.info(actions_taken_mask)
+                actions_taken_mask = batch["info"]["available_actions_mask"]
 
                 behavior_policy_logits = batch["policy_logits"]
                 behavior_action_log_probs = combine_policy_logits_to_log_probs(
@@ -357,13 +354,12 @@ def learn(
                 )
 
                 combined_learner_action_log_probs = combined_learner_action_log_probs + learner_action_log_probs
-                # Only take entropy and KL loss for tiles where at least one action was taken
-                any_actions_taken = actions_taken_mask.any(dim=-1)
+
                 if flags.use_teacher:
                     teacher_kl_loss = compute_teacher_kl_loss(
                         learner_policy_logits,
                         teacher_outputs["policy_logits"],
-                        any_actions_taken
+                        actions_taken_mask
                     )
                 else:
                     teacher_kl_loss = torch.zeros_like(combined_teacher_kl_loss)
@@ -372,11 +368,11 @@ def learn(
                 teacher_kl_losses = (reduce(
                     teacher_kl_loss,
                     reduction="sum",
-                ) / any_actions_taken.sum()).detach().cpu().item()
+                )).detach().cpu().item()
 
                 learner_policy_entropy = combine_policy_entropy(
                     learner_policy_logits,
-                    any_actions_taken
+                    actions_taken_mask
                 )
 
                 combined_learner_entropy = combined_learner_entropy + learner_policy_entropy
@@ -384,8 +380,7 @@ def learn(
                 entropies = -(reduce(
                     learner_policy_entropy,
                     reduction="sum"
-                ) / any_actions_taken.sum()).detach().cpu().item()
-
+                )).detach().cpu().item()
             discounts = (~batch["done"]).float() * flags.discounting
             discounts = discounts.unsqueeze(-1).expand_as(combined_behavior_action_log_probs)
             values = learner_outputs["baseline"]
@@ -466,7 +461,7 @@ def learn(
 
             stats = {
                 "Env": {
-                    key[8:]: val[batch["done"]][~val[batch["done"]].isnan()].mean().item()
+                    key[8:]: val[batch["done"]][~val[batch["done"]].isnan()].item()
                     for key, val in batch["info"].items()
                     if key.startswith("LOGGING_") and "ACTIONS_" not in key
                 },
@@ -475,17 +470,17 @@ def learn(
                     "vtrace_pg_loss": vtrace_pg_loss.detach().item(),
                     "upgo_pg_loss": upgo_pg_loss.detach().item(),
                     "baseline_loss": baseline_loss.detach().item(),
-                    # "teacher_kl_loss": teacher_kl_loss.detach().item(),
-                    # "teacher_baseline_loss": teacher_baseline_loss.detach().item(),
+                    "teacher_kl_loss": teacher_kl_loss.detach().item(),
+                    "teacher_baseline_loss": teacher_baseline_loss.detach().item(),
                     "entropy_loss": entropy_loss.detach().item(),
                     "total_loss": total_loss.detach().item(),
                 },
                 "Entropy": {
                     "overall": entropies,
                 },
-                # "Teacher_KL_Divergence": {
-                #     "overall": teacher_kl_losses,
-                # },
+                "Teacher_KL_Divergence": {
+                    "overall": teacher_kl_losses,
+                },
                 "Misc": {
                     "learning_rate": last_lr,
                     "total_games_played": total_games_played

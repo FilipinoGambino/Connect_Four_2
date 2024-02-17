@@ -62,6 +62,7 @@ class RLAgent:
 
         self.stopwatch.start("Observation processing")
         env_output = self.env.reset(configuration=conf, observation=obs)
+        print(np.array(obs['board']).reshape(6, 7))
 
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
@@ -86,7 +87,6 @@ class RLAgent:
         overage_time_msg = f"Remaining overage time: {obs['remainingOverageTime']:.2f}"
 
         print(" - ".join([value_msg, timing_msg, overage_time_msg]))
-        print(np.array(obs['board']).reshape(6,7))
         return action
 
     def get_env_output(self):
