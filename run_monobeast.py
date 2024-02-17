@@ -12,6 +12,7 @@ from pathlib import Path
 from torch import multiprocessing as mp
 import wandb
 
+from api_key import WANDB_API_KEY
 from connectx.utils import flags_to_namespace
 from connectx.torchbeast.monobeast import train
 
@@ -98,4 +99,5 @@ def main(flags: DictConfig):
 
 if __name__ == "__main__":
     # mp.set_start_method("spawn")
+    # wandb.login(key=WANDB_API_KEY)
     main()

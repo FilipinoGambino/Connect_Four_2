@@ -170,9 +170,9 @@ def compute_teacher_kl_loss(
 
 def reduce(losses: torch.Tensor, reduction: str) -> torch.Tensor:
     if reduction == "mean":
-        return losses.mean()
+        return losses.nanmean()
     elif reduction == "sum":
-        return losses.sum()
+        return losses.nansum()
     else:
         raise ValueError(f"Reduction must be one of 'sum' or 'mean', was: {reduction}")
 
@@ -364,12 +364,12 @@ def learn(
                 else:
                     teacher_kl_loss = torch.zeros_like(combined_teacher_kl_loss)
                 combined_teacher_kl_loss = combined_teacher_kl_loss + teacher_kl_loss
-
+                # logging.info(f"\nloss {teacher_kl_loss.shape}}")
                 teacher_kl_losses = (reduce(
                     teacher_kl_loss,
                     reduction="sum",
                 )).detach().cpu().item()
-
+                # logging.info(f"\nlosses :\n{teacher_kl_losses}")
                 learner_policy_entropy = combine_policy_entropy(
                     learner_policy_logits,
                     actions_taken_mask
@@ -429,6 +429,7 @@ def learn(
                 combined_teacher_kl_loss,
                 reduction=flags.reduction
             )
+            # logging.info(f"\freduced loss {teacher_kl_loss.shape}:\f{teacher_kl_loss}")
             if flags.use_teacher:
                 teacher_baseline_loss = flags.teacher_baseline_cost * compute_baseline_loss(
                     values,
