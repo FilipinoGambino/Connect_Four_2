@@ -6,7 +6,8 @@ IN_A_ROW = 4
 GAME_STATUS = dict(
     NO_WINNING_MOVE=1,
     UNDEFENDED_POSITION=2,
-    ACTIVE_PLAYER_WINS=3,
+    THREE_OF_FOUR=3,
+    ACTIVE_PLAYER_WINS=4,
 )
 
 horizontal_kernel = np.ones([1, IN_A_ROW], dtype=np.uint8)

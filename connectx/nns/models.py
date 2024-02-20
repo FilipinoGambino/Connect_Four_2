@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, Union
 
 from .in_blocks import DictInputLayer
 from ..connectx_gym.reward_spaces import RewardSpec
-from ..utility_constants import BOARD_SIZE
+from ..utility_constants import BOARD_SIZE, IN_A_ROW
 import logging
 
 logging.basicConfig(
@@ -44,22 +44,21 @@ class DictActor(nn.Module):
         Expects an input of shape batch_size, n_channels, h, w
         This input will be projected by the actor, and then converted to shape batch_size, n_channels, 1, h, w
         """
-
         b, _, h, w = x.shape
-        logits = self.actor(x).contiguous()
+
+        logits = self.actor(x)
         logits = logits.view(-1,self.n_actions)
 
-        aam = available_actions_mask.squeeze(1)
+        aam = available_actions_mask
 
         assert logits.shape == aam.shape, f"logits: {logits.shape} | mask: {aam.shape}"
         logits = logits + torch.where(
             aam,
-            torch.zeros_like(logits) + float("-inf"),
+            torch.full_like(logits, fill_value=float("-inf")),
             torch.zeros_like(logits)
         )
 
         actions = DictActor.logits_to_actions(logits, sample)
-        actions = actions.view(*logits.shape[:-1], -1)
 
         return logits, actions
 
@@ -191,6 +190,7 @@ class BasicActorCriticNetwork(nn.Module):
     ) -> Dict[str, Any]:
         x, available_actions_mask, subtask_embeddings = self.dict_input_layer(x)
         base_out = self.base_model(x)
+
         if subtask_embeddings is not None:
             subtask_embeddings = torch.repeat_interleave(subtask_embeddings, 2, dim=0)
 
@@ -200,6 +200,7 @@ class BasicActorCriticNetwork(nn.Module):
             sample=sample,
             **actor_kwargs
         )
+
         baseline = self.baseline(self.baseline_base(base_out))
 
         return dict(

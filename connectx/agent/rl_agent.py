@@ -112,9 +112,25 @@ class RLAgent:
         return self.unwrapped_env.board
 
 if __name__=="__main__":
-    from kaggle_environments import make
-    env = make('connectx', debug=True)
-
-    env.run([RLAgent(1), 'negamax'])
+    from kaggle_environments import evaluate, make
+    # env = make('connectx', debug=False)
+    #
+    # env.reset()
+    # env.run([RLAgent(1), 'negamax'])
+    # print(env.render(mode='ansi'))
     # env.play([RLAgent(1), None])
-    # print(env.steps)
+
+
+    def mean_reward1(rewards):
+        return sum(r[0] for r in rewards) / float(len(rewards))
+
+    def mean_reward2(rewards):
+        return sum(r[-1] for r in rewards) / float(len(rewards))
+
+
+    # print(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100))
+    # Run multiple episodes to estimate its performance.
+    print("My Agent vs Random Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100)))
+    print("My Agent vs Random Agent:", mean_reward2(evaluate("connectx", ["random", RLAgent(2)], num_episodes=100)))
+    print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=100)))
+    print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=100)))

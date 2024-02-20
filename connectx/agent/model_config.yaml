@@ -6,7 +6,7 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: new_beginnings
+name: conv_phase2
 ## WANDB params
 # The wandb project name
 project: ConnectX
@@ -16,7 +16,7 @@ entity: filipinogambino
 group: debug
 
 # Parameters to overwrite
-use_mixed_precision: False
+use_mixed_precision: false
 total_steps: 1e3
 batch_size: 8
 checkpoint_freq: 60.
@@ -24,17 +24,18 @@ num_actors: 2
 n_actor_envs: 16
 unroll_length: 42
 seed: 42
-model_arch: vit_model
+model_arch: conv_model
 embedding_dim: 32
 hidden_dim: 128
-n_heads: 4
-n_blocks: 1
+n_blocks: 8
+kernel_size: 3
 device: cpu
-rescale_value_input: False
+rescale_value_input: false
+rescale_se_input: false
 obs_space_kwargs: {}
 reward_space_kwargs: {}
-normalize: False
-debug: True
+normalize: false
+debug: false
 
 # Model params
 act_space: BasicActionSpace
@@ -44,7 +45,7 @@ reward_space: GameResultReward # MoreInARowReward
 ## OPTIMIZER params
 optimizer_class: Adam
 optimizer_kwargs:
-  lr: 1e-4
+  lr: 5e-5
   # See https://arxiv.org/pdf/2105.05246.pdf
   eps: 0.0003
   #alpha: 0.9
@@ -61,7 +62,7 @@ reduction: mean
 # MISCELLANEOUS params
 actor_device: cpu
 learner_device: cpu
-disable_wandb: True
+disable_wandb: true
 model_log_freq: 100
 # file_descriptor or file_system
 sharing_strategy: file_descriptor

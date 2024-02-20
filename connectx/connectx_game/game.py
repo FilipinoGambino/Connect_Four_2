@@ -37,11 +37,14 @@ class Game:
         for kernel in VICTORY_KERNELS:
             convolutions1 = convolve2d(self.board == active.mark, kernel, mode="valid")
             convolutions2 = convolve2d(self.board == inactive.mark, kernel, mode="valid")
-            can_win = (convolutions1 == 0) * convolutions2
+            enemy_can_win = (convolutions1 == 0) * convolutions2
+            me_can_win = (convolutions2 == 0) * convolutions1
 
             if np.max(convolutions1) == IN_A_ROW:
                 return GAME_STATUS['ACTIVE_PLAYER_WINS']
-            elif np.max(can_win) == (IN_A_ROW - 1):
+            elif np.max(me_can_win) == (IN_A_ROW - 1):
+                return GAME_STATUS['THREE_OF_FOUR']
+            elif np.max(enemy_can_win) == (IN_A_ROW - 1):
                 return GAME_STATUS['UNDEFENDED_POSITION']
         return GAME_STATUS['NO_WINNING_MOVE']
 

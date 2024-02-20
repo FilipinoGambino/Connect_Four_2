@@ -56,7 +56,7 @@ class GameResultReward(FullGameRewardSpace):
             reward_min=-1.,
             reward_max=1.,
             zero_sum=False,
-            only_once=True
+            only_once=False
         )
 
     def __init__(self, **kwargs):
@@ -72,11 +72,14 @@ class GameResultReward(FullGameRewardSpace):
         if result == GAME_STATUS['ACTIVE_PLAYER_WINS']:
             reward = 1.
             done = True
+        elif result == GAME_STATUS['THREE_OF_FOUR']:
+            reward = .75
+            done = False
         elif result == GAME_STATUS['UNDEFENDED_POSITION']:
             reward = -1.
             done = False
         elif result == GAME_STATUS['NO_WINNING_MOVE']:
-            reward = 1/42
+            reward = -.1
             done = False
         return reward, done
 

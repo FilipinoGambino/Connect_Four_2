@@ -300,6 +300,7 @@ def learn(
         lock=threading.Lock(),
 ) -> Tuple[Dict, int]:
     """Performs a learning (optimization) step."""
+    count = 0
     with acquire_timeout(lock,30):
         try:
             with amp.autocast(enabled=flags.use_mixed_precision):
@@ -319,7 +320,7 @@ def learn(
                     teacher_outputs = None
                 # Take final value function slice for bootstrapping.
                 bootstrap_value = learner_outputs["baseline"][-1]
-
+                count = 1
                 # Move from obs[t] -> action[t] to action[t] -> obs[t].
                 batch = buffers_apply(batch, lambda x: x[1:])
                 learner_outputs = buffers_apply(learner_outputs, lambda x: x[:-1])
@@ -343,7 +344,7 @@ def learn(
                     actions,
                     actions_taken_mask
                 )
-
+                count = 2
                 combined_behavior_action_log_probs = combined_behavior_action_log_probs + behavior_action_log_probs
 
                 learner_policy_logits = learner_outputs["policy_logits"]
@@ -374,7 +375,7 @@ def learn(
                     learner_policy_logits,
                     actions_taken_mask
                 )
-
+                count = 3
                 combined_learner_entropy = combined_learner_entropy + learner_policy_entropy
 
                 entropies = -(reduce(
@@ -429,7 +430,7 @@ def learn(
                 combined_teacher_kl_loss,
                 reduction=flags.reduction
             )
-
+            count = 4
             if flags.use_teacher:
                 teacher_baseline_loss = flags.teacher_baseline_cost * compute_baseline_loss(
                     values,
@@ -459,7 +460,7 @@ def learn(
             last_lr = last_lr[0]
 
             total_games_played += batch["done"].sum().item()
-
+            count = 5
             stats = {
                 "Env": {
                     key[8:]: val[batch["done"]][~val[batch["done"]].isnan()].mean().item()
@@ -487,7 +488,7 @@ def learn(
                     "total_games_played": total_games_played
                 },
             }
-
+            count = 6
             optimizer.zero_grad()
             if flags.use_mixed_precision:
                 grad_scaler.scale(total_loss).backward()
@@ -510,7 +511,7 @@ def learn(
             actor_model.load_state_dict(learner_model.state_dict())
             return stats, total_games_played
         except Exception as e:
-            print(e)
+            logging.info(f"count:{count} | {e}")
 
 def train(flags):
     # Necessary for multithreading and multiprocessing
@@ -710,12 +711,12 @@ def train(flags):
             },
             checkpoint_path + "_weights.pt"
         )
-        model_artifact = wandb.Artifact('model', type='model')
-        weights_artifact = wandb.Artifact('weights', type='weights')
-        model_artifact.add_file(checkpoint_path + ".pt")
-        weights_artifact.add_file(checkpoint_path + "_weights.pt")
-        wandb.log_artifact(model_artifact)
-        wandb.log_artifact(weights_artifact)
+        # model_artifact = wandb.Artifact('model', type='model')
+        # weights_artifact = wandb.Artifact('weights', type='weights')
+        # model_artifact.add_file(checkpoint_path + ".pt")
+        # weights_artifact.add_file(checkpoint_path + "_weights.pt")
+        # wandb.log_artifact(model_artifact)
+        # wandb.log_artifact(weights_artifact)
 
     timer = timeit.default_timer
     try:

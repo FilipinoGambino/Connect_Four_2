@@ -6,7 +6,7 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: vs_random_v2
+name: new_beginnings
 ## WANDB params
 # The wandb project name
 project: ConnectX
@@ -61,7 +61,7 @@ reduction: mean
 # MISCELLANEOUS params
 actor_device: cpu
 learner_device: cpu
-disable_wandb: True
+disable_wandb: true
 model_log_freq: 100
 # file_descriptor or file_system
 sharing_strategy: file_descriptor
