@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 import gym
+import math
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 from ..connectx_game.game import Game
-from ..utility_constants import BOARD_SIZE
+from ..utility_constants import BOARD_SIZE, IN_A_ROW
+
 
 class BaseObsSpace(ABC):
     # NB: Avoid using Discrete() space, as it returns a shape of ()
@@ -108,6 +110,80 @@ class _BasicObsSpaceWrapper(gym.Wrapper):
             "empty_cells": np.where(board == 0, 1, 0),
             "p1_cells": np.where(board == p1.mark, 1, 0),
             "p2_cells": np.where(board == p2.mark, 1, 0),
+            "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
+        }
+        return obs
+
+class HistoricalObs(BaseObsSpace, ABC):
+    def get_obs_spec(
+            self,
+            board_dims: Tuple[int, int] = BOARD_SIZE
+    ) -> gym.spaces.Dict:
+        x = board_dims[0]
+        y = board_dims[1]
+        return gym.spaces.Dict({
+            "active_player_t-0": gym.spaces.MultiBinary((x, y)),
+            "active_player_t-1": gym.spaces.MultiBinary((x, y)),
+            "active_player_t-2": gym.spaces.MultiBinary((x, y)),
+            "active_player_t-3": gym.spaces.MultiBinary((x, y)),
+            "inactive_player_t-0": gym.spaces.MultiBinary((x, y)),
+            "inactive_player_t-1": gym.spaces.MultiBinary((x, y)),
+            "inactive_player_t-2": gym.spaces.MultiBinary((x, y)),
+            "inactive_player_t-3": gym.spaces.MultiBinary((x, y)),
+            "active_mark": gym.spaces.MultiBinary((x,y)),
+            "turn": gym.spaces.Box(low=0, high=1, shape=[1, 1]),
+        })
+
+    def wrap_env(self, env) -> gym.Wrapper:
+        return _HistoricalObsWrapper(env)
+
+
+class _HistoricalObsWrapper(gym.Wrapper):
+    def __init__(self, env: gym.Env):
+        super(_HistoricalObsWrapper, self).__init__(env)
+        self._empty_obs = {}
+        turns = math.prod(BOARD_SIZE)
+        self.active_p_obs = np.zeros(shape=(turns,*BOARD_SIZE), dtype=np.int64)
+        self.inactive_p_obs = np.zeros(shape=(turns,*BOARD_SIZE), dtype=np.int64)
+
+        for key, spec in HistoricalObs().get_obs_spec().spaces.items():
+            if isinstance(spec, gym.spaces.MultiBinary):
+                self._empty_obs[key] = np.zeros(spec.shape, dtype=np.int64)
+            elif isinstance(spec, gym.spaces.Box):
+                self._empty_obs[key] = np.zeros(spec.shape, dtype=np.float32) + spec.low
+            else:
+                raise NotImplementedError(f"{type(spec)} is not an accepted observation space.")
+
+    def reset(self, **kwargs):
+        observation, reward, done, info = self.env.reset(**kwargs)
+        self.active_p_obs = np.zeros_like(self.active_p_obs)
+        self.inactive_p_obs =  np.zeros_like(self.inactive_p_obs)
+        return self.observation(observation), reward, done, info
+
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        return self.observation(observation), reward, done, info
+
+    def observation(self, observation: Game) -> Dict[str, np.ndarray]:
+        board = observation.board
+        active_p = observation.active_player
+        inactive_p = observation.inactive_player
+
+        turn = observation.turn
+        norm_turn = turn / observation.board.size
+        self.active_p_obs[turn] = np.where(board == active_p.mark, 1, 0)
+        self.inactive_p_obs[turn] = np.where(board == inactive_p.mark, 1, 0)
+
+        obs = {
+            "active_player_t-0": self.active_p_obs[max(0,turn)],
+            "active_player_t-1": self.active_p_obs[max(0,turn-1)],
+            "active_player_t-2": self.active_p_obs[max(0,turn-2)],
+            "active_player_t-3": self.active_p_obs[max(0,turn-3)],
+            "inactive_player_t-0": self.inactive_p_obs[max(0,turn)],
+            "inactive_player_t-1": self.inactive_p_obs[max(0,turn-1)],
+            "inactive_player_t-2": self.inactive_p_obs[max(0,turn-2)],
+            "inactive_player_t-3": self.inactive_p_obs[max(0,turn-3)],
+            "active_mark": np.full_like(board, fill_value=active_p.mark-1, dtype=np.int64), # Normalized
             "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
         }
         return obs

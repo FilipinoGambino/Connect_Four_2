@@ -39,8 +39,8 @@ debug: false
 
 # Model params
 act_space: BasicActionSpace
-obs_space: BasicObsSpace
-reward_space: GameResultReward # MoreInARowReward
+obs_space: HistoricalObs
+reward_space: GameResultReward
 
 ## OPTIMIZER params
 optimizer_class: Adam

@@ -25,11 +25,7 @@ class LoggingEnv(gym.Wrapper):
 
     def info(self, info: Dict[str, np.ndarray], reward: int) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
-        if math.isnan(self.env.unwrapped.turn):
-            logging.info('turn was nan')
-            step = 0
-        else:
-            step = self.env.unwrapped.turn - 1
+        step = self.env.unwrapped.turn - 1 # env's step increments turn before we do these calcs
         logs = dict(step=step)
 
         self.reward_sum[step % 2] = reward

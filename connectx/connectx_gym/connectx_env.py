@@ -72,14 +72,5 @@ class ConnectFour(gym.Env):
         return self.game_state.board
 
     @property
-    def max_turns(self):
-        if isinstance(self.board, np.ndarray):
-            return self.board.size
-        elif isinstance(self.board, list):
-            return len(self.board)
-        else:
-            raise NotImplementedError
-
-    @property
     def turn(self):
         return self.game_state.turn

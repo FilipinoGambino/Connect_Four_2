@@ -67,3 +67,12 @@ class Game:
         assert self.turn == self.board.size - np.count_nonzero(self.board==0)
         turn = self.turn - 1
         return self.players[(turn + 1) % 2]
+
+    @property
+    def max_turns(self):
+        if isinstance(self.board, np.ndarray):
+            return self.board.size
+        elif isinstance(self.board, list):
+            return len(self.board)
+        else:
+            raise NotImplementedError

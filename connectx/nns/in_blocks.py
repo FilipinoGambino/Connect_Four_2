@@ -70,6 +70,7 @@ class ConvEmbeddingInputLayer(nn.Module):
     def forward(self, x):
         cont_outs = []
         emb_outs = dict()
+
         for key,op in self.keys_to_op.items():
             in_tensor = x[key]
             if op == "embedding":
