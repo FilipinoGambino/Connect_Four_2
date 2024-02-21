@@ -85,7 +85,7 @@ def main(flags: DictConfig):
 
     flags = get_default_flags(flags)
     logging.info(OmegaConf.to_yaml(flags, resolve=True))
-    OmegaConf.save(flags, "outputs/02-19/23-14-07/config.yaml")
+    OmegaConf.save(flags, "outputs/02-21/config.yaml")
     flags = flags_to_namespace(OmegaConf.to_container(flags))
     if not flags.disable_wandb:
         wandb.init(

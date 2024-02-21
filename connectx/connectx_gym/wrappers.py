@@ -25,11 +25,10 @@ class LoggingEnv(gym.Wrapper):
 
     def info(self, info: Dict[str, np.ndarray], reward: int) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
-        step = self.env.unwrapped.turn - 1 # env's step increments turn before we do these calcs
+        step = self.env.unwrapped.turn
         logs = dict(step=step)
 
-        self.reward_sum[step % 2] = reward
-        # logs["debugging rewards"] = self.reward_sum
+        self.reward_sum[(step-1) % 2] += reward
         logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
         logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
         logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]

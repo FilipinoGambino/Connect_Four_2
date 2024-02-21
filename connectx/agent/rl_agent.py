@@ -62,7 +62,6 @@ class RLAgent:
 
         self.stopwatch.start("Observation processing")
         env_output = self.env.reset(configuration=conf, observation=obs)
-        print(np.array(obs['board']).reshape(6, 7))
 
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
@@ -113,11 +112,11 @@ class RLAgent:
 
 if __name__=="__main__":
     from kaggle_environments import evaluate, make
-    # env = make('connectx', debug=False)
-    #
-    # env.reset()
-    # env.run([RLAgent(1), 'negamax'])
-    # print(env.render(mode='ansi'))
+    env = make('connectx', debug=False)
+
+    env.reset()
+    env.run([RLAgent(1), 'negamax'])
+    print(env.render(mode='ansi'))
     # env.play([RLAgent(1), None])
 
 
@@ -128,9 +127,10 @@ if __name__=="__main__":
         return sum(r[-1] for r in rewards) / float(len(rewards))
 
 
-    # print(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100))
     # Run multiple episodes to estimate its performance.
     print("My Agent vs Random Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100)))
     print("My Agent vs Random Agent:", mean_reward2(evaluate("connectx", ["random", RLAgent(2)], num_episodes=100)))
     print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=10)))
     print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=10)))
+
+    # print(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100))

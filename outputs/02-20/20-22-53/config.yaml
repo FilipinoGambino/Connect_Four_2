@@ -6,7 +6,7 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: conv_historical_phase3
+name: conv_historical_phase4
 ## WANDB params
 # The wandb project name
 project: ConnectX
@@ -45,7 +45,7 @@ reward_space: GameResultReward
 ## OPTIMIZER params
 optimizer_class: Adam
 optimizer_kwargs:
-  lr: 1e-6
+  lr: 5e-7
   # See https://arxiv.org/pdf/2105.05246.pdf
   eps: 0.0003
   # alpha: 0.9
@@ -61,7 +61,7 @@ reduction: mean
 
 # Pretrained model for KL loss
 use_teacher: true
-teacher_load_dir: outputs/02-20/19-21-15
+teacher_load_dir: outputs/02-20/20-22-53
 teacher_checkpoint_file: 500224_weights.pt
 
 # MISCELLANEOUS params

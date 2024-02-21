@@ -6,7 +6,7 @@ from scipy.signal import convolve2d
 from typing import NamedTuple, Tuple, Dict
 
 from ..connectx_game.game import Game
-from ..utility_constants import BOARD_SIZE, IN_A_ROW, GAME_STATUS
+from ..utility_constants import BOARD_SIZE, IN_A_ROW, GAME_STATUS, VICTORY_KERNELS
 
 class RewardSpec(NamedTuple):
     reward_min: float
@@ -63,24 +63,35 @@ class GameResultReward(FullGameRewardSpace):
         super(GameResultReward, self).__init__(**kwargs)
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
-        p1,p2 = game_state.players
-        if p1.active(game_state.turn - 1):
-            result = game_state.should_win(p1,p2)
-        elif p2.active(game_state.turn - 1):
-            result = game_state.should_win(p1, p2)
+        '''
+        The inactive player (p1) is the one that just completed an action so we need their reward
+        :param game_state:
+        :return: reward for the completed action, whether or not the game state is done
+        '''
+        p1 = game_state.inactive_player
+        p2 = game_state.active_player
+        for kernel in VICTORY_KERNELS:
+            convolutions = convolve2d(game_state.board == p1.mark, kernel, mode="valid")
+            if np.max(convolutions) == IN_A_ROW:
+                reward = 1.
+                done = True
+                return reward, done
 
-        if result == GAME_STATUS['ACTIVE_PLAYER_WINS']:
-            reward = 1.
-            done = True
-        elif result == GAME_STATUS['THREE_OF_FOUR']:
-            reward = .75
-            done = False
-        elif result == GAME_STATUS['UNDEFENDED_POSITION']:
-            reward = -1.
-            done = False
-        elif result == GAME_STATUS['NO_WINNING_MOVE']:
-            reward = -.1
-            done = False
+        # Check every next move to see if p2 can win
+        valid_columns = [col for col in range(BOARD_SIZE[1]) if not game_state.board[:, col].all()]
+        for col in valid_columns:
+            board = game_state.board.copy()
+            row = game_state.get_lowest_available_row(col)
+            board[row,col] = p2.mark
+            for kernel in VICTORY_KERNELS:
+                convolutions = convolve2d(board == p2.mark, kernel, mode="valid")
+                if np.max(convolutions) == IN_A_ROW:
+                    reward = -1.
+                    done = False
+                    return reward, done
+
+        reward = 1/42
+        done = False
         return reward, done
 
     def _compute_rewards(self, game_state: Game) -> float:
