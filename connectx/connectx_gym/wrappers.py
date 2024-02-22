@@ -29,9 +29,8 @@ class LoggingEnv(gym.Wrapper):
         logs = dict(step=step)
 
         self.reward_sum[(step-1) % 2] += reward
-        logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
-        logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
-        logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
+        logs["p1_rewards"] = [self.reward_sum[0]]
+        logs["p2_rewards"] = [self.reward_sum[1]]
 
 
         info.update({f"LOGGING_{key}": np.array(val, dtype=np.float32) for key, val in logs.items()})

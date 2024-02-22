@@ -70,7 +70,7 @@ class GameResultReward(FullGameRewardSpace):
         '''
         p1 = game_state.inactive_player
         p2 = game_state.active_player
-        for kernel in VICTORY_KERNELS:
+        for idx,kernel in enumerate(VICTORY_KERNELS):
             convolutions = convolve2d(game_state.board == p1.mark, kernel, mode="valid")
             if np.max(convolutions) == IN_A_ROW:
                 reward = 1.
@@ -101,7 +101,7 @@ class LongGameReward(BaseRewardSpace):
     @staticmethod
     def get_reward_spec() -> RewardSpec:
         return RewardSpec(
-            reward_min=-1.,
+            reward_min=0.,
             reward_max=1.,
             zero_sum=False,
             only_once=False
@@ -111,11 +111,26 @@ class LongGameReward(BaseRewardSpace):
         self.board_size = math.prod(BOARD_SIZE)
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
-        done = game_state.game_end() != "No Winner"
-        return self._compute_rewards(game_state), done
+        p1 = game_state.inactive_player
+        for idx,kernel in enumerate(VICTORY_KERNELS):
+            convolutions = convolve2d(game_state.board == p1.mark, kernel, mode="valid")
+            if np.max(convolutions) == IN_A_ROW:
+                # reward = -.2 # Don't want to be too punishing for technically doing the right thing.
+                if np.max(convolutions) == IN_A_ROW:
+                    if idx > 1:  # diagonal kernel
+                        reward = 1.
+                        done = True
+                    else:
+                        reward = .4
+                        done = True
+                    return reward, done
+
+        reward = min(.35, (game_state.turn - 1) / game_state.max_turns)
+        done = False
+        return reward, done
 
     def _compute_rewards(self, game_state: Game) -> float:
-        return game_state.turn / self.board_size
+        pass
 
 
 class MoreInARowReward(BaseRewardSpace):

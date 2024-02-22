@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import os
 from pathlib import Path
@@ -17,6 +18,13 @@ CHECKPOINT_PATH,_ = list(Path(__file__).parent.glob('*.pt'))
 AGENT = None
 
 os.environ["OMP_NUM_THREADS"] = "1"
+
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
 
 class RLAgent:
     def __init__(self, player_id):
@@ -66,21 +74,22 @@ class RLAgent:
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
             outputs = self.model.select_best_actions(env_output)
-            agent_output = {
-                "policy_logits": outputs["policy_logits"].cpu(),
-                "baseline": outputs["baseline"].cpu()
-            }
-            agent_output["actions"] = models.DictActor.logits_to_actions(
-                torch.flatten(agent_output["policy_logits"], start_dim=0, end_dim=-2),
-                sample=False
-            ).view(*agent_output["policy_logits"].shape[:-1], -1)
+            # outputs = self.model.sample_actions(env_output)
+            # agent_output = {
+            #     "policy_logits": outputs["policy_logits"].cpu(),
+            #     "baseline": outputs["baseline"].cpu()
+            # }
+            # agent_output["actions"] = models.DictActor.logits_to_actions(
+            #     torch.flatten(agent_output["policy_logits"], start_dim=0, end_dim=-2),
+            #     sample=False
+            # ).view(*agent_output["policy_logits"].shape[:-1], -1)
 
 
-        action = agent_output["actions"].item()
+        action = outputs["actions"].item()
 
         self.stopwatch.stop()
 
-        value = agent_output["baseline"].numpy().item(0)
+        value = outputs["baseline"].numpy().item(0)
         value_msg = f"Turn: {obs['step']} - Predicted value: {value:.2f} | Column:{action} |"
         timing_msg = f"{str(self.stopwatch)}"
         overage_time_msg = f"Remaining overage time: {obs['remainingOverageTime']:.2f}"
@@ -115,8 +124,14 @@ if __name__=="__main__":
     env = make('connectx', debug=False)
 
     env.reset()
-    env.run([RLAgent(1), 'negamax'])
-    print(env.render(mode='ansi'))
+    # env.run([RLAgent(1), 'random'])
+    # print(env.render(mode='ansi'))
+    # env.reset()
+    # env.run(['random', RLAgent(2)])
+    # print(env.render(mode='ansi'))
+    # env.reset()
+    # env.run([RLAgent(1), 'negamax'])
+    # print(env.render(mode='ansi'))
     # env.play([RLAgent(1), None])
 
 
