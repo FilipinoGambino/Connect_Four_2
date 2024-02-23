@@ -69,7 +69,9 @@ class RLAgent:
         self.stopwatch.reset()
 
         self.stopwatch.start("Observation processing")
-        env_output = self.env.reset(configuration=conf, observation=obs)
+        self.preprocess(obs)
+
+        env_output = self.get_env_output()
 
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
@@ -100,6 +102,12 @@ class RLAgent:
     def get_env_output(self):
         return self.env.step(self.action_placeholder)
 
+    def preprocess(self, obs):
+        if obs['step'] == 0:
+            self.unwrapped_env.reset()
+        else:
+            self.unwrapped_env.manual_step(obs)
+
     def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
         """
         Moves the predictions to the cpu, applies the inverse of all augmentations,
@@ -110,28 +118,28 @@ class RLAgent:
     @property
     def unwrapped_env(self) -> ConnectFour:
         return self.env.unwrapped[0]
-
-    @property
-    def game_state(self):
-        return self.unwrapped_env.game_state
-
-    @property
-    def board(self):
-        return self.unwrapped_env.board
+    #
+    # @property
+    # def game_state(self):
+    #     return self.unwrapped_env.game_state
+    #
+    # @property
+    # def board(self):
+    #     return self.unwrapped_env.board
 
 if __name__=="__main__":
     from kaggle_environments import evaluate, make
     env = make('connectx', debug=False)
 
     env.reset()
-    # env.run([RLAgent(1), 'random'])
-    # print(env.render(mode='ansi'))
-    # env.reset()
-    # env.run(['random', RLAgent(2)])
-    # print(env.render(mode='ansi'))
-    # env.reset()
-    # env.run([RLAgent(1), 'negamax'])
-    # print(env.render(mode='ansi'))
+    env.run([RLAgent(1), 'random'])
+    print(env.render(mode='ansi'))
+    env.reset()
+    env.run(['random', RLAgent(2)])
+    print(env.render(mode='ansi'))
+    env.reset()
+    env.run([RLAgent(1), 'negamax'])
+    print(env.render(mode='ansi'))
     # env.play([RLAgent(1), None])
 
 
@@ -143,9 +151,9 @@ if __name__=="__main__":
 
 
     # Run multiple episodes to estimate its performance.
-    print("My Agent vs Random Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100)))
-    print("My Agent vs Random Agent:", mean_reward2(evaluate("connectx", ["random", RLAgent(2)], num_episodes=100)))
-    print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=10)))
-    print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=10)))
+    # print("My Agent vs Random Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100)))
+    # print("My Agent vs Random Agent:", mean_reward2(evaluate("connectx", ["random", RLAgent(2)], num_episodes=100)))
+    # print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=10)))
+    # print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=10)))
 
     # print(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100))

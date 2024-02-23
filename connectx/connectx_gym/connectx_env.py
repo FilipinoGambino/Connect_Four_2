@@ -46,13 +46,15 @@ class ConnectFour(gym.Env):
 
     def reset(self, **kwargs):
         self.game_state = Game()
-        if not self.autoplay:
-            self.game_state.update(kwargs['observation'])
         return self.get_obs_reward_done_info()
 
     def step(self, action):
-        self.game_state.step(action)
+        if self.autoplay:
+            self.game_state.step(action)
         return self.get_obs_reward_done_info()
+
+    def manual_step(self, obs):
+        self.game_state.update(obs)
 
     def info(self, rewards):
         return dict(

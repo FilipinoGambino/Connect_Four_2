@@ -238,7 +238,6 @@ gamma = 0.99
 # Keep the last episodes reward
 episodes_reward: collections.deque = collections.deque(maxlen=min_episodes_criterion)
 print(__file__)
-print(f"\nHere's yo model bitchass!!!!!\n\n{model}")
 
 
 if __name__=='__main__':

@@ -7,6 +7,15 @@ from typing import Dict, Tuple
 from ..connectx_game.game import Game
 from ..utility_constants import BOARD_SIZE, IN_A_ROW
 
+import logging
+
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
+
 
 class BaseObsSpace(ABC):
     # NB: Avoid using Discrete() space, as it returns a shape of ()
@@ -143,8 +152,7 @@ class _HistoricalObsWrapper(gym.Wrapper):
         super(_HistoricalObsWrapper, self).__init__(env)
         self._empty_obs = {}
         turns = math.prod(BOARD_SIZE)
-        self.active_p_obs = np.zeros(shape=(turns,*BOARD_SIZE), dtype=np.int64)
-        self.inactive_p_obs = np.zeros(shape=(turns,*BOARD_SIZE), dtype=np.int64)
+        self.historical_obs = np.zeros(shape=(turns,*BOARD_SIZE), dtype=np.int64)
 
         for key, spec in HistoricalObs().get_obs_spec().spaces.items():
             if isinstance(spec, gym.spaces.MultiBinary):
@@ -156,8 +164,7 @@ class _HistoricalObsWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         observation, reward, done, info = self.env.reset(**kwargs)
-        self.active_p_obs = np.zeros_like(self.active_p_obs)
-        self.inactive_p_obs =  np.zeros_like(self.inactive_p_obs)
+        self.historical_obs = np.zeros_like(self.historical_obs)
         return self.observation(observation), reward, done, info
 
     def step(self, action):
@@ -171,19 +178,32 @@ class _HistoricalObsWrapper(gym.Wrapper):
 
         turn = observation.turn
         norm_turn = turn / observation.board.size
-        self.active_p_obs[turn] = np.where(board == active_p.mark, 1, 0)
-        self.inactive_p_obs[turn] = np.where(board == inactive_p.mark, 1, 0)
+        self.historical_obs[turn] = board
+
+        # Check if the last obs is all zeros
+        if turn > 0 and not self.historical_obs[turn-1].any():
+            # max fixes a bug if your agent is player 2
+            diff = np.subtract(self.historical_obs[turn], self.historical_obs[max(0,turn-2)])
+            last_move = np.where(diff==inactive_p.mark, inactive_p.mark, 0)
+            self.historical_obs[turn-1] = np.add(board, last_move)
 
         obs = {
-            "active_player_t-0": self.active_p_obs[max(0,turn)],
-            "active_player_t-1": self.active_p_obs[max(0,turn-1)],
-            "active_player_t-2": self.active_p_obs[max(0,turn-2)],
-            "active_player_t-3": self.active_p_obs[max(0,turn-3)],
-            "inactive_player_t-0": self.inactive_p_obs[max(0,turn)],
-            "inactive_player_t-1": self.inactive_p_obs[max(0,turn-1)],
-            "inactive_player_t-2": self.inactive_p_obs[max(0,turn-2)],
-            "inactive_player_t-3": self.inactive_p_obs[max(0,turn-3)],
+            "active_player_t-0": np.where(self.historical_obs[max(0,turn)]==active_p.mark, 1, 0),
+            "active_player_t-1": np.where(self.historical_obs[max(0,turn-2)]==active_p.mark, 1, 0),
+            "active_player_t-2": np.where(self.historical_obs[max(0,turn-4)]==active_p.mark, 1, 0),
+            "active_player_t-3": np.where(self.historical_obs[max(0,turn-6)]==active_p.mark, 1, 0),
+            "inactive_player_t-0": np.where(self.historical_obs[max(0,turn-1)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-1": np.where(self.historical_obs[max(0,turn-3)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-2": np.where(self.historical_obs[max(0,turn-5)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-3": np.where(self.historical_obs[max(0,turn-7)]==inactive_p.mark, 1, 0),
             "active_mark": np.full_like(board, fill_value=active_p.mark-1, dtype=np.int64), # Normalized
             "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
         }
+        for key in obs.keys():
+            if key in ["inactive_player_t-0",
+                       "inactive_player_t-1",
+                       "inactive_player_t-2",
+                       "inactive_player_t-3"]:
+                logging.info(f"\n{obs[key]}")
+        logging.info("\n")
         return obs
