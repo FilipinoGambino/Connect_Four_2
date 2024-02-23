@@ -39,8 +39,8 @@ use_teacher: true
 teacher_load_dir: outputs/02-22/13-54-18
 teacher_checkpoint_file: 500224_weights.pt
 actor_device: cpu
-learner_device: cpu
-disable_wandb: false
+learner_device: cuda:0
+disable_wandb: true
 model_log_freq: 100
 sharing_strategy: file_descriptor
 num_buffers: 2

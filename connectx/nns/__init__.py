@@ -82,4 +82,5 @@ def _create_model(
         n_value_heads=1,
         rescale_value_input=flags.rescale_value_input
     )
+
     return model.to(device=device)
