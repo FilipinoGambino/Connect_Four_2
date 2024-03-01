@@ -192,10 +192,10 @@ class _HistoricalObsWrapper(gym.Wrapper):
             "active_player_t-1": np.where(self.historical_obs[max(0,turn-2)]==active_p.mark, 1, 0),
             "active_player_t-2": np.where(self.historical_obs[max(0,turn-4)]==active_p.mark, 1, 0),
             "active_player_t-3": np.where(self.historical_obs[max(0,turn-6)]==active_p.mark, 1, 0),
-            "inactive_player_t-0": np.where(self.historical_obs[max(0,turn-1)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-1": np.where(self.historical_obs[max(0,turn-3)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-2": np.where(self.historical_obs[max(0,turn-5)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-3": np.where(self.historical_obs[max(0,turn-7)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-0": np.where(self.historical_obs[max(1,turn-1)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-1": np.where(self.historical_obs[max(1,turn-3)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-2": np.where(self.historical_obs[max(1,turn-5)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-3": np.where(self.historical_obs[max(1,turn-7)]==inactive_p.mark, 1, 0),
             "active_mark": np.full_like(board, fill_value=active_p.mark-1, dtype=np.int64), # Normalized
             "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
         }
