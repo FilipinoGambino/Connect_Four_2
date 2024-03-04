@@ -53,15 +53,15 @@ def random_agent(board):
             # 5% chance to convert at any time
             if randint(0, 19) == 0:
                 remaining_halite -= board.configuration.convert_cost
-                ship.next_action = ShipAction.CONVERT
+                ship.action = ShipAction.CONVERT
                 continue
             # 50% chance to convert if there are no shipyards
             if randint(0, 1) == 0 and len(me.shipyards) == 0:
                 remaining_halite -= board.configuration.convert_cost
-                ship.next_action = ShipAction.CONVERT
+                ship.action = ShipAction.CONVERT
                 continue
         # None represents the chance to do nothing
-        ship.next_action = choice(ShipAction.moves())
+        ship.action = choice(ShipAction.moves())
     shipyards = me.shipyards
     # randomize shipyard order
     shipyards = sample(shipyards, len(shipyards))
@@ -70,11 +70,11 @@ def random_agent(board):
         # If there are no ships, always spawn if possible
         if ship_count == 0 and remaining_halite > board.configuration.spawn_cost:
             remaining_halite -= board.configuration.spawn_cost
-            shipyard.next_action = ShipyardAction.SPAWN
+            shipyard.action = ShipyardAction.SPAWN
         # 20% chance to spawn if no ships
         elif randint(0, 4) == 0 and remaining_halite > board.configuration.spawn_cost:
             remaining_halite -= board.configuration.spawn_cost
-            shipyard.next_action = ShipyardAction.SPAWN
+            shipyard.action = ShipyardAction.SPAWN
 
 
 agents = {"random": random_agent}

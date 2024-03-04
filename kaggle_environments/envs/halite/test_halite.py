@@ -41,9 +41,9 @@ def test_halite_helpers():
     @board_agent
     def helper_agent(board):
         for ship in board.current_player.ships:
-            ship.next_action = ShipAction.NORTH
+            ship.action = ShipAction.NORTH
         for shipyard in board.current_player.shipyards:
-            shipyard.next_action = ShipyardAction.SPAWN
+            shipyard.action = ShipyardAction.SPAWN
 
     env.run([helper_agent, helper_agent])
 
@@ -116,7 +116,7 @@ def test_ship_shipyard_collision_destroys_both():
     board = create_board(agent_count=2)
     player_ship = first(board.current_player.ships)
     opponent_ship = first(first(board.opponents).ships)
-    opponent_ship.next_action = ShipAction.CONVERT
+    opponent_ship.action = ShipAction.CONVERT
     board = board.next()
     assert len(board.ships) == 1
     assert len(board.shipyards) == 1
@@ -152,7 +152,7 @@ def test_no_move_on_halite_gathers_halite():
 def test_move_on_halite_gathers_no_halite():
     board = create_board(starting_halite=1000, agent_count=1)
     ship = first(board.ships.values())
-    ship.next_action = ShipAction.NORTH
+    ship.action = ShipAction.NORTH
     next_board = board.next()
     next_ship = next_board.ships[ship.id]
     ship_delta = next_ship.halite - ship.halite
@@ -163,7 +163,7 @@ def test_failed_convert_gathers_halite():
     board = create_board(starting_halite=1000, agent_count=1)
     board.current_player._halite = board.configuration.convert_cost - 1
     ship = first(board.ships.values())
-    ship.next_action = ShipAction.CONVERT
+    ship.action = ShipAction.CONVERT
     expected_delta = int(ship.cell.halite * board.configuration.collect_rate)
     next_board = board.next()
     next_ship = next_board.ships[ship.id]
@@ -176,7 +176,7 @@ def test_failed_convert_gathers_halite():
 def test_shipyard_ids_not_reused():
     board = create_board(starting_halite=1000, agent_count=1)
     ship = first(board.ships.values())
-    ship.next_action = ShipAction.CONVERT
+    ship.action = ShipAction.CONVERT
     board = board.next()
     shipyard = board.cells[ship.position].shipyard
     assert ship.id != shipyard.id

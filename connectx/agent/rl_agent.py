@@ -132,15 +132,15 @@ if __name__=="__main__":
     env = make('connectx', debug=False)
 
     env.reset()
-    env.run([RLAgent(1), 'random'])
-    print(env.render(mode='ansi'))
-    env.reset()
-    env.run(['random', RLAgent(2)])
-    print(env.render(mode='ansi'))
-    env.reset()
     env.run([RLAgent(1), 'negamax'])
     print(env.render(mode='ansi'))
-    # env.play([RLAgent(1), None])
+    env.reset()
+    # env.run(['random', RLAgent(2)])
+    # print(env.render(mode='ansi'))
+    # env.reset()
+    # env.run([RLAgent(1), 'negamax'])
+    # print(env.render(mode='ansi'))
+    # # env.play([RLAgent(1), None])
 
 
     def mean_reward1(rewards):

@@ -1,4 +1,4 @@
-name: conv_historical_phase4
+name: conv_phase1
 project: ConnectX
 entity: filipinogambino
 group: historical
@@ -39,7 +39,7 @@ use_teacher: true
 teacher_load_dir: outputs/02-20/20-22-53
 teacher_checkpoint_file: 500224_weights.pt
 actor_device: cpu
-learner_device: cpu
+learner_device: cuda
 disable_wandb: false
 model_log_freq: 100
 sharing_strategy: file_descriptor

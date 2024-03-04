@@ -180,30 +180,30 @@ class _HistoricalObsWrapper(gym.Wrapper):
         norm_turn = turn / observation.board.size
         self.historical_obs[turn] = board
 
-        # Check if the last obs is all zeros
-        if turn > 0 and not self.historical_obs[turn-1].any():
-            # max fixes a bug if your agent is player 2
-            diff = np.subtract(self.historical_obs[turn], self.historical_obs[max(0,turn-2)])
+        # Checks if the previous observation called this wrapper
+        if turn >= 2 and not self.historical_obs[turn-1].any():
+            diff = np.subtract(self.historical_obs[turn], self.historical_obs[turn-2])
             last_move = np.where(diff==inactive_p.mark, inactive_p.mark, 0)
-            self.historical_obs[turn-1] = np.add(board, last_move)
+            self.historical_obs[turn-1] = np.add(self.historical_obs[turn-2], last_move)
 
         obs = {
-            "active_player_t-0": np.where(self.historical_obs[max(0,turn)]==active_p.mark, 1, 0),
-            "active_player_t-1": np.where(self.historical_obs[max(0,turn-2)]==active_p.mark, 1, 0),
-            "active_player_t-2": np.where(self.historical_obs[max(0,turn-4)]==active_p.mark, 1, 0),
-            "active_player_t-3": np.where(self.historical_obs[max(0,turn-6)]==active_p.mark, 1, 0),
-            "inactive_player_t-0": np.where(self.historical_obs[max(1,turn-1)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-1": np.where(self.historical_obs[max(1,turn-3)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-2": np.where(self.historical_obs[max(1,turn-5)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-3": np.where(self.historical_obs[max(1,turn-7)]==inactive_p.mark, 1, 0),
+            "active_player_t-0": np.where(self.historical_obs[max(0,turn-1)]==active_p.mark, 1, 0),
+            "active_player_t-1": np.where(self.historical_obs[max(0,turn-3)]==active_p.mark, 1, 0),
+            "active_player_t-2": np.where(self.historical_obs[max(0,turn-5)]==active_p.mark, 1, 0),
+            "active_player_t-3": np.where(self.historical_obs[max(0,turn-7)]==active_p.mark, 1, 0),
+            "inactive_player_t-0": np.where(self.historical_obs[max(0,turn)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-1": np.where(self.historical_obs[max(0,turn-2)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-2": np.where(self.historical_obs[max(0,turn-4)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-3": np.where(self.historical_obs[max(0,turn-6)]==inactive_p.mark, 1, 0),
             "active_mark": np.full_like(board, fill_value=active_p.mark-1, dtype=np.int64), # Normalized
             "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
         }
-        for key in obs.keys():
-            if key in ["inactive_player_t-0",
-                       "inactive_player_t-1",
-                       "inactive_player_t-2",
-                       "inactive_player_t-3"]:
-                logging.info(f"\n{obs[key]}")
-        logging.info("\n")
+        # logging.info(f"Turn: {turn}")
+        # for key in obs.keys():
+        #     if key in ["active_player_t-0",
+        #                "active_player_t-1",
+        #                "active_player_t-2",
+        #                "active_player_t-3"]:
+        #         logging.info(f"\n{obs[key]}")
+        # logging.info("\n")
         return obs

@@ -6,7 +6,7 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: conv_phase1_longer_games
+name: conv_phase1_teacher_opp
 ## WANDB params
 # The wandb project name
 project: ConnectX
@@ -40,7 +40,7 @@ debug: false
 # Model params
 act_space: BasicActionSpace
 obs_space: HistoricalObs
-reward_space: LongGameReward
+reward_space: GameResultReward
 
 ## OPTIMIZER params
 optimizer_class: Adam
@@ -54,15 +54,15 @@ min_lr_mod: 0.02
 ## LOSS params
 entropy_cost: 0.001
 baseline_cost: 1.
-teacher_kl_cost: 0. # 005
+teacher_kl_cost: 0.005
 # lambda parameter for TD-lambda and UPGO losses
 lmb: 0.8
 reduction: mean
 
 # Pretrained model for KL loss
-use_teacher: false
-teacher_load_dir: none # outputs/02-20/20-22-53
-teacher_checkpoint_file: none # 500224_weights.pt
+use_teacher: true
+teacher_load_dir: outputs/02-20/20-22-53
+teacher_checkpoint_file: 500224_weights.pt
 
 # MISCELLANEOUS params
 actor_device: cpu

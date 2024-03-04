@@ -37,9 +37,9 @@ def test_kore_helpers():
     def helper_agent(board):
         for shipyard in board.current_player.shipyards:
             if shipyard.ship_count >= 10:
-                shipyard.next_action = ShipyardAction.launch_fleet_in_direction(10, Direction.NORTH)
+                shipyard.action = ShipyardAction.launch_fleet_in_direction(10, Direction.NORTH)
             else:
-                shipyard.next_action = ShipyardAction.spawn_ships(1)
+                shipyard.action = ShipyardAction.spawn_ships(1)
 
     env.run([helper_agent, helper_agent])
 

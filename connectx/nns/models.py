@@ -69,7 +69,7 @@ class DictActor(nn.Module):
             probs = F.softmax(logits, dim=-1)
             return torch.multinomial(probs, num_samples=1, replacement=False)
         else:
-            return torch.argmax(logits, dim=-1)
+            return torch.argmax(logits, dim=-1).unsqueeze(dim=-1)
 
 class MultiLinear(nn.Module):
     # TODO: Add support for subtask float weightings instead of integer indices

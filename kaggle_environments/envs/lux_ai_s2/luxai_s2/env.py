@@ -861,7 +861,7 @@ class LuxAI_S2(ParallelEnv):
                 if failed_agents[agent]:  # skip failed agents
                     continue
                 for unit in self.state.units[agent].values():
-                    unit_a: Action = unit.next_action()
+                    unit_a: Action = unit.action()
                     if unit_a is None:
                         continue
                     actions_by_type[unit_a.act_type].append((unit, unit_a))

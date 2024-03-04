@@ -294,7 +294,7 @@ def interpreter(state, env):
 
 def renderer(state, env):
     config = env.configuration
-    columns = config.columns
+    columns = config.rows
     rows = config.rows
 
     food_symbol = "F"

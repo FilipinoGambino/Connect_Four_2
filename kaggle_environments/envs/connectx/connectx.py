@@ -20,14 +20,14 @@ EMPTY = 0
 
 
 def play(board, column, mark, config):
-    columns = config.columns
+    columns = config.rows
     rows = config.rows
     row = max([r for r in range(rows) if board[column + (r * columns)] == EMPTY])
     board[column + (row * columns)] = mark
 
 
 def is_win(board, column, mark, config, has_played=True):
-    columns = config.columns
+    columns = config.rows
     rows = config.rows
     inarow = config.inarow - 1
     row = (
@@ -59,11 +59,11 @@ def is_win(board, column, mark, config, has_played=True):
 
 
 def random_agent(obs, config):
-    return choice([c for c in range(config.columns) if obs.board[c] == EMPTY])
+    return choice([c for c in range(config.rows) if obs.board[c] == EMPTY])
 
 
 def negamax_agent(obs, config):
-    columns = config.columns
+    columns = config.rows
     rows = config.rows
     size = rows * columns
 
@@ -130,7 +130,7 @@ agents = {"random": random_agent, "negamax": negamax_agent}
 
 
 def interpreter(state, env):
-    columns = env.configuration.columns
+    columns = env.configuration.rows
     rows = env.configuration.rows
 
     # Ensure the board is properly initialized.
@@ -184,7 +184,7 @@ def interpreter(state, env):
 
 
 def renderer(state, env):
-    columns = env.configuration.columns
+    columns = env.configuration.rows
     rows = env.configuration.rows
     board = state[0].observation.board
 

@@ -214,7 +214,7 @@ def act(
         env_output = env.reset(force=True)
         # board = env_output['obs']['p1_cells'][0] + (env_output['obs']['p2_cells'][0] * 2)
         # logging.info(f"Resetting\n{board}")
-        agent_output = actor_model(env_output)
+        agent_output = actor_model.sample_actions(env_output)
 
         while True:
             index = free_queue.get()
@@ -225,7 +225,7 @@ def act(
             # Do new rollout.
             for t in range(flags.unroll_length):
                 timings.reset()
-                agent_output = actor_model(env_output)
+                agent_output = actor_model.sample_actions(env_output)
                 timings.time("model")
 
                 env_output = env.step(agent_output["actions"])
