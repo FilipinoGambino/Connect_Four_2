@@ -34,8 +34,6 @@ for replay in replays:
 
             if turn > 0:
                 last_action_position = np.logical_xor(board, state)
-                # rc = rows[action - 1] * BOARD_SIZE[-1] - (BOARD_SIZE[-1] - action - 1)
-                # rows[action - 1] -= 1
                 state = np.where(last_action_position, turn, state)
 
             d = pd.DataFrame({key:val for key,val in zip(df.columns, [*state, turn, active_p - 1 == 0])}, index=[0])
