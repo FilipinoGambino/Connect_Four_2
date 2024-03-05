@@ -57,7 +57,6 @@ class DictActor(nn.Module):
             torch.full_like(logits, fill_value=float("-inf")),
             torch.zeros_like(logits)
         )
-
         actions = DictActor.logits_to_actions(logits, sample)
 
         return logits, actions

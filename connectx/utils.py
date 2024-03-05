@@ -20,10 +20,6 @@ def flags_to_namespace(flags: Dict) -> SimpleNamespace:
     # Miscellaneous params
     flags.actor_device = torch.device(flags.actor_device)
     flags.learner_device = torch.device(flags.learner_device)
-    # x = [f"{x}: {y}" for x, y in flags.__dict__.items()]
-    # for y in x:
-    #     print(y)
-    # print()
 
     return flags
 

@@ -139,7 +139,7 @@ class HistoricalObs(BaseObsSpace, ABC):
             "inactive_player_t-1": gym.spaces.MultiBinary((x, y)),
             "inactive_player_t-2": gym.spaces.MultiBinary((x, y)),
             "inactive_player_t-3": gym.spaces.MultiBinary((x, y)),
-            "active_mark": gym.spaces.MultiBinary((x,y)),
+            "p1_active": gym.spaces.MultiBinary((x,y)),
             "turn": gym.spaces.Box(low=0, high=1, shape=[1, 1]),
         })
 
@@ -191,11 +191,17 @@ class _HistoricalObsWrapper(gym.Wrapper):
             "active_player_t-1": np.where(self.historical_obs[max(0,turn-3)]==active_p.mark, 1, 0),
             "active_player_t-2": np.where(self.historical_obs[max(0,turn-5)]==active_p.mark, 1, 0),
             "active_player_t-3": np.where(self.historical_obs[max(0,turn-7)]==active_p.mark, 1, 0),
+            "active_player_t-4": np.where(self.historical_obs[max(0,turn-9)]==active_p.mark, 1, 0),
+            "active_player_t-5": np.where(self.historical_obs[max(0,turn-11)]==active_p.mark, 1, 0),
+            "active_player_t-6": np.where(self.historical_obs[max(0,turn-12)]==active_p.mark, 1, 0),
             "inactive_player_t-0": np.where(self.historical_obs[max(0,turn)]==inactive_p.mark, 1, 0),
             "inactive_player_t-1": np.where(self.historical_obs[max(0,turn-2)]==inactive_p.mark, 1, 0),
             "inactive_player_t-2": np.where(self.historical_obs[max(0,turn-4)]==inactive_p.mark, 1, 0),
             "inactive_player_t-3": np.where(self.historical_obs[max(0,turn-6)]==inactive_p.mark, 1, 0),
-            "active_mark": np.full_like(board, fill_value=active_p.mark-1, dtype=np.int64), # Normalized
+            "inactive_player_t-4": np.where(self.historical_obs[max(0,turn-8)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-5": np.where(self.historical_obs[max(0,turn-10)]==inactive_p.mark, 1, 0),
+            "inactive_player_t-6": np.where(self.historical_obs[max(0,turn-12)]==inactive_p.mark, 1, 0),
+            "p1_active": np.full_like(board, fill_value=active_p.mark-1, dtype=np.int64), # Normalized
             "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
         }
         # logging.info(f"Turn: {turn}")

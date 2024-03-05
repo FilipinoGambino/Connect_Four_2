@@ -30,13 +30,14 @@ for replay in replays:
             elif step[1]['status'] == 'ACTIVE':
                 active_p = step[1]['observation']['mark']
             else:
-                active_p = 0
+                continue
 
             if turn > 0:
-                last_action_position = np.logical_xor(board, state)
-                # rc = rows[action - 1] * BOARD_SIZE[-1] - (BOARD_SIZE[-1] - action - 1)
-                # rows[action - 1] -= 1
-                state = np.where(last_action_position, turn, state)
+                try:
+                    last_action_position = np.logical_xor(board, state)
+                    state = np.where(last_action_position, turn, state)
+                except ValueError:
+                    raise ValueError(f"{board}\n{state}")
 
             d = pd.DataFrame({key:val for key,val in zip(df.columns, [*state, turn, active_p - 1 == 0])}, index=[0])
             df = pd.concat([df, d], ignore_index=True)

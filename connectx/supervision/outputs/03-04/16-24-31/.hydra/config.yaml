@@ -1,0 +1,39 @@
+name: vit_model
+project: ConnectX
+entity: filipinogambino
+group: supervision
+use_mixed_precision: false
+batch_size: 8
+checkpoint_freq: 60.0
+seed: 42
+model_arch: vit_model
+n_heads: 4
+embedding_dim: 32
+hidden_dim: 128
+kernel_size: 3
+n_blocks: 8
+device: cpu
+rescale_value_input: false
+rescale_se_input: false
+obs_space_kwargs: {}
+reward_space_kwargs: {}
+normalize: false
+debug: false
+act_space: BasicActionSpace
+obs_space: HistoricalObs
+reward_space: LongGameReward
+criterion_class: CrossEntropyLoss
+optimizer_class: Adam
+optimizer_kwargs:
+  lr: 0.0001
+  eps: 0.0003
+lrschedule_class: LinearLR
+lrschedule_kwargs:
+  start_factor: 1.0
+  end_factor: 0.1
+  total_iters: 20
+  last_epoch: -1
+learner_device: cpu
+disable_wandb: true
+model_log_freq: 100
+sharing_strategy: file_descriptor

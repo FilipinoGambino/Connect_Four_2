@@ -1,128 +1,147 @@
-import collections
+import logging
+import numpy as np
+import pandas as pd
 import torch
-from typing import Tuple
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, Dataset, random_split
+from typing import Dict, Tuple
+# pd.set_option('display.max_columns', None)
 
-from sl_agent import SLAgent
+from connectx.nns import create_model
 
-
-def run_episode(
-        env_steps: torch.Tensor,
-        model: torch.nn.Module,
-        max_steps: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Runs a single episode to collect training data."""
-
-    policy_logits = [None] * max_steps
-    values = [None] * max_steps
-    rewards = [None] * max_steps
-    action_probs = [None] * max_steps
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
 
 
-    for step, env_output in enumerate(env_steps):
-        # Run the model and to get action probabilities and critic value
-        agent_output = model(env_output['obs'])
+class ConnectFourDataset(Dataset):
+    def __init__(self, fname, transform):
+        self.df = pd.read_pickle(fname)
+        self.transform = transform
 
-        # Store critic values
-        values[step] = agent_output['baseline']
+    def __len__(self):
+        return self.df.shape[0]
 
-        # Store log probability of the action chosen
-        policy_logits[step] = agent_output['policy_logits']
+    def __getitem__(self, idx):
+        series = self.df.iloc[idx,:]
+        return self.transform(series)
 
-        # Store reward
-        rewards[step] = env_output['action'] == agent_output['actions']
+def convert_to_obs_space(x: pd.Series) -> Tuple[np.ndarray, Dict]:
+    action = np.zeros(shape=(7), dtype=np.float32)
+    action[int(x['action'])] = 1.
+    p1_active = np.full(shape=(6,7), fill_value=x['p1_active'], dtype=np.int64)
+    norm_turn = np.full(shape=(1,1), fill_value=x['turn'] / 42, dtype=np.float32)
+    board_by_turn = x[:42].to_numpy()
+    p1_board = np.where(board_by_turn % 2 == 1, 1, 0)
+    p2_board = np.where(np.logical_and(board_by_turn > 0, board_by_turn % 2 == 0), 2, 0)
+    board = p1_board + p2_board
+    available_actions_mask = np.array(board.reshape(6,7).all(axis=0), dtype=bool)
 
-        # Store log probability of the action chosen
-        action = agent_output['actions']
-        action_prob = agent_output['policy_logits'][0, action]
-        action_probs[step] = action_prob
+    keys = [
+        "active_player_t-0",
+        "inactive_player_t-1",
+        "active_player_t-1",
+        "inactive_player_t-2",
+        "active_player_t-2",
+        "inactive_player_t-3",
+        "active_player_t-3"
+    ]
+    obs = {"inactive_player_t-0": np.where(board==2, 1, 0).reshape(6,7)}
+    for key in keys:
+        last_move = np.argmax(board_by_turn)
+        board_by_turn[last_move] = 0
+        board[last_move] = 0
+        if key.startswith('inactive'):
+            obs[key] = np.where(board==2, 1, 0).reshape(6,7)
+        elif key.startswith('active'):
+            obs[key] = np.where(board==1, 1, 0).reshape(6,7)
+        else:
+            raise Exception(f"{key} is invalid")
 
-    action_probs = torch.stack(action_probs)
-    values = torch.stack(values)
-    rewards = torch.stack(rewards)
+    # Keeping the order the same as RL observation space
+    obs = {k: v for k, v in sorted(obs.items(), key=lambda item: item[0])}
+    obs['p1_active'] = p1_active
+    obs['turn'] = norm_turn
 
-    return action_probs, values, rewards
+    output = dict(obs=obs, info={"available_actions_mask":available_actions_mask})
 
-def get_expected_return(
-    rewards: torch.Tensor,
-    gamma: float,
-    standardize: bool = True) -> torch.Tensor:
-    """Compute expected returns per timestep."""
-    eps = 1e-6
-    returns = torch.zeros_like(rewards, dtype=torch.float32)
+    return output, action
 
-    rewards = rewards.to(dtype=torch.float32)
-    discounted_sum = 0.
-    for i,reward in enumerate(rewards):
-        discounted_sum = reward + gamma * discounted_sum
-        returns[i] = discounted_sum
-    returns = torch.stack(returns)
+def get_data(flags):
+    ds = ConnectFourDataset('.\\pandas_replays\\stacked_replays.pkl', convert_to_obs_space)
+    train_data, valid_data = random_split(ds, [flags.train_pct, flags.valid_pct])
+    train_loader = DataLoader(train_data, batch_size=flags.train_bs, shuffle=True)
+    valid_loader = DataLoader(valid_data, batch_size=flags.valid_bs, shuffle=True)
+    return train_loader, valid_loader
 
-    if standardize:
-        returns = (returns - torch.mean(returns)) / (torch.std(returns) + eps)
+def train(flags):
+    train_loader, valid_loader = get_data(flags)
 
-    return returns
+    model = create_model(flags, device='cpu')
+    n_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logging.info(f"Training model with {n_trainable_params} parameters")
 
-def compute_loss(
-        action_probs: torch.Tensor,
-        values: torch.Tensor,
-        returns: torch.Tensor) -> torch.Tensor:
-    """Computes the combined Actor-Critic loss."""
+    criterion = flags.criterion_class()
+    optimizer = flags.optimizer_class(model.parameters(), **flags.optimizer_kwargs)
+    scheduler = flags.lrschedule_class(optimizer, **flags.lrschedule_kwargs)
 
-    advantage = returns - values
+    for epoch in range(flags.epochs):
+        running_loss = 0.0
+        game_steps = 0
+        for data in train_loader:
+            obs, labels = data
 
-    action_log_probs = torch.math.log(action_probs)
-    actor_loss = -torch.sum(action_log_probs * advantage)
+            optimizer.zero_grad()
 
-    critic_loss = huber_loss(values, returns)
+            outputs = model.sample_actions(obs)
 
-    return actor_loss + critic_loss
+            probs = F.softmax(outputs['policy_logits'], dim=-1)
 
-def train_step(
-        env_steps: torch.Tensor,
-        model: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        gamma: float,
-        max_steps_per_episode: int,
-) -> torch.Tensor:
-    """Runs a model training step."""
+            loss = criterion(probs, labels)
+            loss.backward()
+            optimizer.step()
 
-    # print(f"\ntrain_step initial_state:\n{initial_state}")
-    # Run the model for one episode to collect training data
-    action_probs, values, rewards = run_episode(env_steps, model, max_steps_per_episode)
+            # Statistics
+            running_loss += loss.item()
+            game_steps += 1
 
-    # Calculate the expected returns
-    returns = get_expected_return(rewards, gamma)
+        logging.info(f"Epoch: {epoch + 1:02d} | lr: {scheduler.get_last_lr()[0]:.2e} | loss: {running_loss / game_steps:.3f}")
+        scheduler.step()
 
-    # Calculate the loss values to update our network
-    loss = compute_loss(action_probs, values, returns)
+    logging.info('Finished Training')
 
-    # compute gradients (grad)
-    loss.backward()
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict(),
+        },
+        flags.name + ".pt",
+    )
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+        },
+        flags.name + "_weights.pt"
+    )
+    validate(valid_loader, model)
 
-    # Apply the gradients to the model's parameters
-    optimizer.step()
-    optimizer.zero_grad()
+def validate(valid_loader, model):
+    correct = 0
+    total = 0
 
-    episode_reward = torch.sum(rewards)
+    with torch.no_grad():
+        for data in valid_loader:
+            obs, labels = data
+            labels = torch.argmax(labels, dim=-1)
+            outputs = model.select_best_actions(obs)
 
-    return episode_reward
+            predicted = outputs['actions'].squeeze(-1)
 
-min_episodes_criterion = 100
-max_episodes = 10000
-max_steps_per_episode = 500
-learning_rate = 0.001
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
 
-# consecutive trials
-reward_threshold = 1
-running_reward = 0
-
-huber_loss = torch.nn.HuberLoss(reduction='mean', delta=1.0)
-
-# The discount factor for future rewards
-gamma = 0.99
-
-# Keep the last episodes reward
-episodes_reward: collections.deque = collections.deque(maxlen=min_episodes_criterion)
-print(__file__)
-
-if __name__=='__main__':
-    train_step()
+    logging.info(f'Accuracy of the network on validation set: {100 * correct // total} %')
