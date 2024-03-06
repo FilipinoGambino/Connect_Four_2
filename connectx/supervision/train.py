@@ -39,6 +39,7 @@ def convert_to_obs_space(x: pd.Series) -> Tuple[np.ndarray, Dict]:
     p2_board = np.where(np.logical_and(board_by_turn > 0, board_by_turn % 2 == 0), 2, 0)
     board = p1_board + p2_board
     available_actions_mask = np.array(board.reshape(6,7).all(axis=0), dtype=bool)
+    flipped_aam = np.array(np.fliplr(board.reshape(6,7)).all(axis=0), dtype=bool).copy()
 
     keys = [
         "active_player_t-0",
@@ -65,8 +66,12 @@ def convert_to_obs_space(x: pd.Series) -> Tuple[np.ndarray, Dict]:
     obs = {k: v for k, v in sorted(obs.items(), key=lambda item: item[0])}
     obs['p1_active'] = p1_active
     obs['turn'] = norm_turn
+    flipped_obs = {key:np.fliplr(val).copy() for key,val in obs.items()}
 
-    output = dict(obs=obs, info={"available_actions_mask":available_actions_mask})
+    output = dict(
+        obs=dict(obs=obs, info={"available_actions_mask":available_actions_mask}),
+        flipped_obs=dict(obs=flipped_obs, info={"available_actions_mask":flipped_aam})
+    )
 
     return output, action
 
@@ -96,9 +101,14 @@ def train(flags):
 
             optimizer.zero_grad()
 
-            outputs = model.sample_actions(obs)
+            reg_outputs = model.sample_actions(obs['obs'])
+            flipped_outputs = model.sample_actions(obs['flipped_obs'])
+            # print(f"reg: {reg_outputs['policy_logits']}")
+            # print(f"flp: {flipped_outputs['policy_logits']}")
+            outputs = torch.add(reg_outputs['policy_logits'],torch.fliplr(flipped_outputs['policy_logits'])) / 2
+            # print(outputs)
 
-            probs = F.softmax(outputs['policy_logits'], dim=-1)
+            probs = F.softmax(outputs, dim=-1)
 
             loss = criterion(probs, labels)
             loss.backward()
@@ -127,21 +137,22 @@ def train(flags):
         },
         flags.name + "_weights.pt"
     )
-    validate(valid_loader, model)
 
-def validate(valid_loader, model):
-    correct = 0
-    total = 0
+    def validate():
+        correct = 0
+        total = 0
 
-    with torch.no_grad():
-        for data in valid_loader:
-            obs, labels = data
-            labels = torch.argmax(labels, dim=-1)
-            outputs = model.select_best_actions(obs)
+        with torch.no_grad():
+            for data in valid_loader:
+                obs, labels = data
+                labels = torch.argmax(labels, dim=-1)
+                outputs = model.select_best_actions(obs['obs'])
 
-            predicted = outputs['actions'].squeeze(-1)
+                predicted = outputs['actions'].squeeze(-1)
 
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
 
-    logging.info(f'Accuracy of the network on validation set: {100 * correct // total} %')
+        logging.info(f'Accuracy of the network on validation set: {100 * correct // total} %')
+
+    validate()

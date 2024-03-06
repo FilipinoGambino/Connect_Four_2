@@ -35,7 +35,7 @@ rescale_se_input: false
 obs_space_kwargs: {}
 reward_space_kwargs: {}
 normalize: false
-debug: false
+debug: true
 
 # Model params
 act_space: BasicActionSpace
@@ -60,14 +60,14 @@ lmb: 0.8
 reduction: mean
 
 # Pretrained model for KL loss
-use_teacher: true
-teacher_load_dir: outputs/02-20/20-22-53
-teacher_checkpoint_file: 500224_weights.pt
+use_teacher: false
+teacher_load_dir: #outputs/02-20/20-22-53
+teacher_checkpoint_file: #500224_weights.pt
 
 # MISCELLANEOUS params
 actor_device: cpu
 learner_device: cpu
-disable_wandb: false
+disable_wandb: true
 model_log_freq: 100
 # file_descriptor or file_system
 sharing_strategy: file_descriptor

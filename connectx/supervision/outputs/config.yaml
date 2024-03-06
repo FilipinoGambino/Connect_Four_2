@@ -10,10 +10,10 @@ train_pct: 0.7
 valid_pct: 0.3
 seed: 42
 model_arch: conv_model
-embedding_dim: 64
+embedding_dim: 32
 hidden_dim: 128
-kernel_size: 5
-n_blocks: 32
+kernel_size: 3
+n_blocks: 16
 device: cpu
 rescale_value_input: false
 rescale_se_input: false
@@ -23,7 +23,7 @@ normalize: false
 debug: false
 act_space: BasicActionSpace
 obs_space: HistoricalObs
-reward_space: LongGameReward
+reward_space: GameResultReward
 criterion_class: CrossEntropyLoss
 optimizer_class: Adam
 optimizer_kwargs:
@@ -32,7 +32,7 @@ optimizer_kwargs:
 lrschedule_class: LinearLR
 lrschedule_kwargs:
   start_factor: 1.0
-  end_factor: 0.1
+  end_factor: 0.01
   total_iters: 5
   last_epoch: -1
 learner_device: cpu

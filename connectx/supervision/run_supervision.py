@@ -13,7 +13,6 @@ except ImportError:
 from connectx.supervision.utils import flags_to_namespace
 from connectx.supervision.train import train
 
-
 os.environ["OMP_NUM_THREADS"] = "1"
 
 logging.basicConfig(

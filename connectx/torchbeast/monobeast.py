@@ -88,7 +88,7 @@ def combine_policy_logits_to_log_probs(
     # Get the action probabilities
     probs = F.softmax(behavior_policy_logits, dim=-1)
     # Ignore probabilities for actions that were not used
-    probs = actions_taken_mask * probs
+    # probs = actions_taken_mask * probs
     # Select the probabilities for actions that were taken by stacked agents and sum these
     selected_probs = torch.gather(probs, -1, actions)
     # Convert the probs to conditional probs, since we sample without replacement

@@ -27,7 +27,7 @@ model_arch: conv_model
 embedding_dim: 32
 hidden_dim: 128
 kernel_size: 3
-n_blocks: 24
+n_blocks: 16
 device: cpu
 rescale_value_input: false
 rescale_se_input: false
@@ -39,19 +39,19 @@ debug: false
 # Model params
 act_space: BasicActionSpace
 obs_space: HistoricalObs
-reward_space: LongGameReward
+reward_space: GameResultReward
 
 ## OPTIMIZER params
 criterion_class: CrossEntropyLoss
 optimizer_class: Adam
 optimizer_kwargs:
   lr: 1e-5
-  eps: 0.0003
+  eps: 1e-7
   #alpha: 0.9
 lrschedule_class: LinearLR
 lrschedule_kwargs:
   start_factor: 1.0
-  end_factor: 0.1
+  end_factor: 0.01
   total_iters: 5
   last_epoch: -1
 
