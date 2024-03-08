@@ -77,7 +77,6 @@ class MyThread(threading.Thread):
 def combine_policy_logits_to_log_probs(
         behavior_policy_logits: torch.Tensor,
         actions: torch.Tensor,
-        actions_taken_mask: torch.Tensor
 ) -> torch.Tensor:
     """
     Combines all policy_logits at a given step to get a single action_log_probs value for that step
@@ -88,41 +87,16 @@ def combine_policy_logits_to_log_probs(
     # Get the action probabilities
     probs = F.softmax(behavior_policy_logits, dim=-1)
     # Ignore probabilities for actions that were not used
-    probs = actions_taken_mask * probs
-    # Select the probabilities for actions that were taken by stacked agents and sum these
+    # Select the probabilities for actions that were taken
     selected_probs = torch.gather(probs, -1, actions)
-    # Convert the probs to conditional probs, since we sample without replacement
-    remaining_probability_density = 1. - torch.cat([
-        torch.zeros(
-            (*selected_probs.shape[:-1], 1),
-            device=selected_probs.device,
-            dtype=selected_probs.dtype
-        ),
-        selected_probs[..., :-1].cumsum(dim=-1)
-    ], dim=-1)
-    # Avoid division by zero
-    remaining_probability_density = remaining_probability_density + torch.where(
-        remaining_probability_density == 0,
-        torch.ones_like(remaining_probability_density),
-        torch.zeros_like(remaining_probability_density)
-    )
-    conditional_selected_probs = selected_probs / remaining_probability_density
-    # Remove 0-valued conditional_selected_probs in order to eliminate neg-inf valued log_probs
-    conditional_selected_probs = conditional_selected_probs + torch.where(
-        conditional_selected_probs == 0,
-        torch.ones_like(conditional_selected_probs),
-        torch.zeros_like(conditional_selected_probs)
-    )
-    log_probs = torch.log(conditional_selected_probs)
-    # Sum over actions, y and x dimensions to combine log_probs from different actions
-    # Squeeze out action_planes dimension as well
-    # return torch.flatten(log_probs, start_dim=-3, end_dim=-1).sum(dim=-1).squeeze(dim=-2)
+
+    log_probs = torch.log(selected_probs)
+
     return log_probs
 
 
 def combine_policy_entropy(
         policy_logits: torch.Tensor,
-        actions_taken_mask: torch.Tensor
 ) -> torch.Tensor:
     """
     Computes and combines policy entropy for a given step.
@@ -142,16 +116,13 @@ def combine_policy_entropy(
     )
     entropies = (policy * log_policy_masked_zeroed)
 
-    assert actions_taken_mask.shape == entropies.shape
-    entropies_masked = entropies# * actions_taken_mask.float()
-    # Sum over y, x, and action_planes dimensions to combine entropies from different actions
-    return entropies_masked#.sum(dim=-1)
+    # Sum over action_planes dimension to combine entropies from different actions
+    return entropies.sum(dim=-1).unsqueeze(-1)
 
 
 def compute_teacher_kl_loss(
         learner_policy_logits: torch.Tensor,
         teacher_policy_logits: torch.Tensor,
-        actions_taken_mask: torch.Tensor
 ) -> torch.Tensor:
     learner_policy_log_probs = F.log_softmax(learner_policy_logits, dim=-1)
     teacher_policy = F.softmax(teacher_policy_logits, dim=-1)
@@ -162,10 +133,8 @@ def compute_teacher_kl_loss(
         reduction="none",
         log_target=False
     )
-    assert actions_taken_mask.shape == kl_div.shape
-    kl_div_masked = kl_div# * actions_taken_mask.float()
 
-    return kl_div_masked
+    return kl_div.sum(dim=-1)
 
 
 def reduce(losses: torch.Tensor, reduction: str) -> torch.Tensor:
@@ -341,7 +310,6 @@ def learn(
                 behavior_action_log_probs = combine_policy_logits_to_log_probs(
                     behavior_policy_logits,
                     actions,
-                    actions_taken_mask
                 )
 
                 combined_behavior_action_log_probs = combined_behavior_action_log_probs + behavior_action_log_probs
@@ -350,7 +318,6 @@ def learn(
                 learner_action_log_probs = combine_policy_logits_to_log_probs(
                     learner_policy_logits,
                     actions,
-                    actions_taken_mask
                 )
 
                 combined_learner_action_log_probs = combined_learner_action_log_probs + learner_action_log_probs
@@ -359,7 +326,6 @@ def learn(
                     teacher_kl_loss = compute_teacher_kl_loss(
                         learner_policy_logits,
                         teacher_outputs["policy_logits"],
-                        actions_taken_mask
                     )
                 else:
                     teacher_kl_loss = torch.zeros_like(combined_teacher_kl_loss)
@@ -369,10 +335,9 @@ def learn(
                     teacher_kl_loss,
                     reduction="sum",
                 )).detach().cpu().item()
-                # logging.info(f"\nlosses :\n{teacher_kl_losses}")
+
                 learner_policy_entropy = combine_policy_entropy(
                     learner_policy_logits,
-                    actions_taken_mask
                 )
 
                 combined_learner_entropy = combined_learner_entropy + learner_policy_entropy

@@ -76,16 +76,6 @@ class RLAgent:
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
             outputs = self.model.select_best_actions(env_output)
-            # outputs = self.model.sample_actions(env_output)
-            # agent_output = {
-            #     "policy_logits": outputs["policy_logits"].cpu(),
-            #     "baseline": outputs["baseline"].cpu()
-            # }
-            # agent_output["actions"] = models.DictActor.logits_to_actions(
-            #     torch.flatten(agent_output["policy_logits"], start_dim=0, end_dim=-2),
-            #     sample=False
-            # ).view(*agent_output["policy_logits"].shape[:-1], -1)
-
 
         action = outputs["actions"].item()
 
@@ -96,7 +86,7 @@ class RLAgent:
         timing_msg = f"{str(self.stopwatch)}"
         overage_time_msg = f"Remaining overage time: {obs['remainingOverageTime']:.2f}"
 
-        print(" - ".join([value_msg, timing_msg, overage_time_msg]))
+        logging.info(" - ".join([value_msg, timing_msg, overage_time_msg]))
         return action
 
     def get_env_output(self):
@@ -106,6 +96,7 @@ class RLAgent:
         if obs['step'] == 0:
             self.unwrapped_env.reset()
         else:
+            logging.info(obs)
             self.unwrapped_env.manual_step(obs)
 
     def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
@@ -118,14 +109,7 @@ class RLAgent:
     @property
     def unwrapped_env(self) -> ConnectFour:
         return self.env.unwrapped[0]
-    #
-    # @property
-    # def game_state(self):
-    #     return self.unwrapped_env.game_state
-    #
-    # @property
-    # def board(self):
-    #     return self.unwrapped_env.board
+
 
 if __name__=="__main__":
     from kaggle_environments import evaluate, make

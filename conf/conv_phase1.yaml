@@ -6,7 +6,7 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: conv_phase1_teacher_opp
+name: conv_phase1
 ## WANDB params
 # The wandb project name
 project: ConnectX
@@ -60,9 +60,9 @@ lmb: 0.8
 reduction: mean
 
 # Pretrained model for KL loss
-use_teacher: true
-teacher_load_dir: outputs/02-20/20-22-53
-teacher_checkpoint_file: 500224_weights.pt
+use_teacher: false
+teacher_load_dir: #outputs/02-20/20-22-53
+teacher_checkpoint_file: #500224_weights.pt
 
 # MISCELLANEOUS params
 actor_device: cpu

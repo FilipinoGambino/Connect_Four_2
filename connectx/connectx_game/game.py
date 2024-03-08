@@ -19,8 +19,11 @@ class Game:
         self.players = [Player(1), Player(2)]
 
     def update(self, obs):
+        logging.info(f"{self.turn}: {self.board}\n{obs['board']}")
         self.board = np.array(obs['board'], dtype=np.uint8).reshape(BOARD_SIZE)
+        logging.info(f"{self.turn}: {self.board}")
         self.turn = obs['step']
+        logging.info(f"{self.step}: {self.board}")
 
     def step(self, action):
         row = self.get_lowest_available_row(action)
