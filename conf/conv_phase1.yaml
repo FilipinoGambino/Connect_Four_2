@@ -6,7 +6,7 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: conv_phase1_teacher_opp
+name: conv_phase
 ## WANDB params
 # The wandb project name
 project: ConnectX
@@ -17,7 +17,7 @@ group: historical
 
 # Parameters to overwrite
 use_mixed_precision: false
-total_steps: 5e5
+total_steps: 1e5
 batch_size: 8
 checkpoint_freq: 60.
 num_actors: 1

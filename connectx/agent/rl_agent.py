@@ -118,30 +118,22 @@ class RLAgent:
     @property
     def unwrapped_env(self) -> ConnectFour:
         return self.env.unwrapped[0]
-    #
-    # @property
-    # def game_state(self):
-    #     return self.unwrapped_env.game_state
-    #
-    # @property
-    # def board(self):
-    #     return self.unwrapped_env.board
+
 
 if __name__=="__main__":
     from kaggle_environments import evaluate, make
     env = make('connectx', debug=False)
 
     env.reset()
-    env.run([RLAgent(1), 'negamax'])
-    print(env.render(mode='ansi'))
+    env.run([RLAgent(1), 'random'])
+    print(f"\np1 v random\n{env.render(mode='ansi')}")
     env.reset()
-    env.run(['random', RLAgent(2)])
-    print(env.render(mode='ansi'))
+    env.run(['negamax', RLAgent(2)])
+    print(f"\np2 v negamax\n{env.render(mode='ansi')}")
     env.reset()
     env.run([RLAgent(1), 'negamax'])
-    print(env.render(mode='ansi'))
-    # env.play([RLAgent(1), None])
-
+    print(f"\np1 v negamax\n{env.render(mode='ansi')}")
+    env.reset()
 
     def mean_reward1(rewards):
         return sum(r[0] for r in rewards) / float(len(rewards))
