@@ -1,0 +1,66 @@
+#defaults:
+#- override hydra/job_logging: colorlog
+#- override hydra/hydra_logging: colorlog
+
+hydra:
+  run:
+    dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
+
+name: conv_model
+## WANDB params
+# The wandb project name
+project: ConnectX
+# The wandb user to log to
+entity: filipinogambino
+# The wandb group for the run
+group: supervision
+
+# Parameters to overwrite
+epochs: 5
+use_mixed_precision: false
+train_bs: 64
+valid_bs: 64
+train_pct: .7
+valid_pct: .3
+seed: 42
+model_arch: conv_model
+embedding_dim: 32
+hidden_dim: 128
+kernel_size: 3
+n_blocks: 16
+device: cpu
+rescale_value_input: false
+rescale_se_input: false
+obs_space_kwargs: {}
+reward_space_kwargs: {}
+normalize: false
+debug: false
+
+# Model params
+act_space: BasicActionSpace
+obs_space: HistoricalObs
+reward_space: GameResultReward
+
+## OPTIMIZER params
+criterion_class: CrossEntropyLoss
+optimizer_class: Adam
+optimizer_kwargs:
+  lr: 1e-5
+  eps: 1e-7
+  #alpha: 0.9
+lrschedule_class: LinearLR
+lrschedule_kwargs:
+  start_factor: 1.0
+  end_factor: 0.01
+  total_iters: 5
+  last_epoch: -1
+
+## LOSS params
+
+
+# MISCELLANEOUS params
+learner_device: cpu
+disable_wandb: true
+model_log_freq: 100
+# file_descriptor or file_system
+sharing_strategy: file_descriptor

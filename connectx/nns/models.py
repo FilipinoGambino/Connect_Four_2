@@ -8,8 +8,15 @@ from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, Union
 
 from .in_blocks import DictInputLayer
 from ..connectx_gym.reward_spaces import RewardSpec
-from ..utility_constants import BOARD_SIZE
+from ..utility_constants import BOARD_SIZE, IN_A_ROW
+import logging
 
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
 
 class DictActor(nn.Module):
     def __init__(
@@ -37,22 +44,20 @@ class DictActor(nn.Module):
         Expects an input of shape batch_size, n_channels, h, w
         This input will be projected by the actor, and then converted to shape batch_size, n_channels, 1, h, w
         """
-
         b, _, h, w = x.shape
-        logits = self.actor(x).contiguous()
+
+        logits = self.actor(x)
         logits = logits.view(-1,self.n_actions)
 
-        aam = available_actions_mask.squeeze(1)
+        aam = available_actions_mask
 
         assert logits.shape == aam.shape, f"logits: {logits.shape} | mask: {aam.shape}"
         logits = logits + torch.where(
             aam,
-            torch.zeros_like(logits) + float("-inf"),
+            torch.full_like(logits, fill_value=float("-inf")),
             torch.zeros_like(logits)
         )
-
         actions = DictActor.logits_to_actions(logits, sample)
-        actions = actions.view(*logits.shape[:-1], -1)
 
         return logits, actions
 
@@ -63,7 +68,7 @@ class DictActor(nn.Module):
             probs = F.softmax(logits, dim=-1)
             return torch.multinomial(probs, num_samples=1, replacement=False)
         else:
-            return torch.argmax(logits, dim=-1)
+            return torch.argmax(logits, dim=-1).unsqueeze(dim=-1)
 
 class MultiLinear(nn.Module):
     # TODO: Add support for subtask float weightings instead of integer indices
@@ -91,6 +96,7 @@ class MultiLinear(nn.Module):
         else:
             biases = self.biases[embedding_idxs]
         return torch.matmul(x.unsqueeze(1), weights).squeeze(1) + biases
+
 
 class BaselineLayer(nn.Module):
     def __init__(self, in_channels: int, reward_space: RewardSpec, n_value_heads: int, rescale_input: bool):

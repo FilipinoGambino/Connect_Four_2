@@ -68,7 +68,7 @@ class MyThread(threading.Thread):
 
     def run(self):
         try:
-            print('hi')
+            print('running thread')
             self.target(self.args)
         except Exception as e:
             print(f'An exception occured in thread "{self.name}":\n{e}')
@@ -77,7 +77,6 @@ class MyThread(threading.Thread):
 def combine_policy_logits_to_log_probs(
         behavior_policy_logits: torch.Tensor,
         actions: torch.Tensor,
-        actions_taken_mask: torch.Tensor
 ) -> torch.Tensor:
     """
     Combines all policy_logits at a given step to get a single action_log_probs value for that step
@@ -87,91 +86,64 @@ def combine_policy_logits_to_log_probs(
     """
     # Get the action probabilities
     probs = F.softmax(behavior_policy_logits, dim=-1)
-    # Ignore probabilities for actions that were not used
-    probs = actions_taken_mask * probs
-    # Select the probabilities for actions that were taken by stacked agents and sum these
+    # Select the probabilities for actions that were taken
     selected_probs = torch.gather(probs, -1, actions)
-    # Convert the probs to conditional probs, since we sample without replacement
-    remaining_probability_density = 1. - torch.cat([
-        torch.zeros(
-            (*selected_probs.shape[:-1], 1),
-            device=selected_probs.device,
-            dtype=selected_probs.dtype
-        ),
-        selected_probs[..., :-1].cumsum(dim=-1)
-    ], dim=-1)
-    # Avoid division by zero
-    remaining_probability_density = remaining_probability_density + torch.where(
-        remaining_probability_density == 0,
-        torch.ones_like(remaining_probability_density),
-        torch.zeros_like(remaining_probability_density)
-    )
-    conditional_selected_probs = selected_probs / remaining_probability_density
-    # Remove 0-valued conditional_selected_probs in order to eliminate neg-inf valued log_probs
-    conditional_selected_probs = conditional_selected_probs + torch.where(
-        conditional_selected_probs == 0,
-        torch.ones_like(conditional_selected_probs),
-        torch.zeros_like(conditional_selected_probs)
-    )
-    log_probs = torch.log(conditional_selected_probs)
-    # Sum over actions, y and x dimensions to combine log_probs from different actions
-    # Squeeze out action_planes dimension as well
-    # return torch.flatten(log_probs, start_dim=-3, end_dim=-1).sum(dim=-1).squeeze(dim=-2)
+
+    log_probs = torch.log(selected_probs)
+
     return log_probs
 
 
 def combine_policy_entropy(
         policy_logits: torch.Tensor,
-        actions_taken_mask: torch.Tensor
+        actions: torch.Tensor
 ) -> torch.Tensor:
     """
     Computes and combines policy entropy for a given step.
     NB: We are just computing the sum of individual entropies, not the joint entropy, because I don't think there is
     an efficient way to compute the joint entropy?
 
-    Initial shape: time, batch, action_planes, players, x, y, n_actions
-    Returned shape: time, batch, players
+    Initial shape: time, batch, n_actions
+    Returned shape: time, batch
     """
     policy = F.softmax(policy_logits, dim=-1)
     log_policy = F.log_softmax(policy_logits, dim=-1)
+
     log_policy_masked_zeroed = torch.where(
         log_policy.isneginf(),
         torch.zeros_like(log_policy),
         log_policy
     )
-    entropies = (policy * log_policy_masked_zeroed).sum(dim=-1)
-    assert actions_taken_mask.shape == entropies.shape
-    entropies_masked = entropies * actions_taken_mask.float()
-    # Sum over y, x, and action_planes dimensions to combine entropies from different actions
-    # return entropies_masked.sum(dim=-1).sum(dim=-1).squeeze(dim=-2)
-    return entropies_masked.unsqueeze(-1)
+    entropies = (policy * log_policy_masked_zeroed)
+
+    entropies_masked = torch.gather(entropies, -1, actions)
+    return entropies_masked
 
 
 def compute_teacher_kl_loss(
         learner_policy_logits: torch.Tensor,
         teacher_policy_logits: torch.Tensor,
-        actions_taken_mask: torch.Tensor
+        actions: torch.Tensor
 ) -> torch.Tensor:
     learner_policy_log_probs = F.log_softmax(learner_policy_logits, dim=-1)
     teacher_policy = F.softmax(teacher_policy_logits, dim=-1)
+
     kl_div = F.kl_div(
         learner_policy_log_probs,
         teacher_policy.detach(),
         reduction="none",
         log_target=False
-    ).sum(dim=-1)
-    assert actions_taken_mask.shape == kl_div.shape
-    kl_div_masked = kl_div * actions_taken_mask.float()
-    # Sum over y, x, and action_planes dimensions to combine kl divergences from different actions
-    # return kl_div_masked.sum(dim=-1).sum(dim=-1).squeeze(dim=-2)
+    )
+    kl_div_masked = torch.gather(kl_div, -1, actions)
+
     return kl_div_masked
 
 
 def reduce(losses: torch.Tensor, reduction: str) -> torch.Tensor:
     if reduction == "mean":
-        return losses.mean()
+        return losses.nanmean()
     elif reduction == "sum":
-        return losses.sum()
+        return losses.nansum()
     else:
         raise ValueError(f"Reduction must be one of 'sum' or 'mean', was: {reduction}")
 
@@ -211,7 +183,9 @@ def act(
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
 
         env_output = env.reset(force=True)
-        agent_output = actor_model(env_output)
+        # board = env_output['obs']['p1_cells'][0] + (env_output['obs']['p2_cells'][0] * 2)
+        # logging.info(f"Resetting\n{board}")
+        agent_output = actor_model.sample_actions(env_output)
 
         while True:
             index = free_queue.get()
@@ -222,11 +196,12 @@ def act(
             # Do new rollout.
             for t in range(flags.unroll_length):
                 timings.reset()
-                agent_output = actor_model(env_output)
+                agent_output = actor_model.sample_actions(env_output)
                 timings.time("model")
 
                 env_output = env.step(agent_output["actions"])
                 if env_output["done"].any():
+
                     # Cache reward, done, and info["actions_taken"] from the terminal step
                     cached_reward = env_output["reward"]
                     cached_done = env_output["done"]
@@ -238,10 +213,12 @@ def act(
                     env_output = env.reset()
                     env_output["reward"] = cached_reward
                     env_output["done"] = cached_done
-                    # env_output["info"]["actions_taken"] = cached_info_actions_taken
-                    env_output["info"].update(cached_info_logging)
-                timings.time("step")
 
+                    env_output["info"].update(cached_info_logging)
+
+                # board = env_output['obs']['p1_cells'][0] + (env_output['obs']['p2_cells'][0] * 2)
+                # logging.info(f"After stepping\n{board}")
+                timings.time("step")
                 fill_buffers_inplace(buffers[index], dict(**env_output, **agent_output), t + 1)
                 timings.time("write")
             full_queue.put(index)
@@ -311,7 +288,6 @@ def learn(
                                                                                           *x.shape[1:]))
                 else:
                     teacher_outputs = None
-
                 # Take final value function slice for bootstrapping.
                 bootstrap_value = learner_outputs["baseline"][-1]
 
@@ -327,59 +303,52 @@ def learn(
                 )
                 combined_learner_action_log_probs = torch.zeros_like(combined_behavior_action_log_probs)
                 combined_teacher_kl_loss = torch.zeros_like(combined_behavior_action_log_probs)
-                teacher_kl_losses = {}
                 combined_learner_entropy = torch.zeros_like(combined_behavior_action_log_probs)
-                entropies = {}
 
-                actions = batch["actions"]#[act_space]
-                actions_taken_mask = batch["info"]["available_actions_mask"].squeeze(-2)#[act_space]
+                actions = batch["actions"]
 
-                behavior_policy_logits = batch["policy_logits"]#[act_space]
+                behavior_policy_logits = batch["policy_logits"]
                 behavior_action_log_probs = combine_policy_logits_to_log_probs(
                     behavior_policy_logits,
                     actions,
-                    actions_taken_mask
                 )
 
                 combined_behavior_action_log_probs = combined_behavior_action_log_probs + behavior_action_log_probs
 
-                learner_policy_logits = learner_outputs["policy_logits"]#[act_space]
+                learner_policy_logits = learner_outputs["policy_logits"]
                 learner_action_log_probs = combine_policy_logits_to_log_probs(
                     learner_policy_logits,
                     actions,
-                    actions_taken_mask
                 )
 
                 combined_learner_action_log_probs = combined_learner_action_log_probs + learner_action_log_probs
-                # Only take entropy and KL loss for tiles where at least one action was taken
-                any_actions_taken = actions_taken_mask.any(dim=-1)
+
                 if flags.use_teacher:
                     teacher_kl_loss = compute_teacher_kl_loss(
                         learner_policy_logits,
-                        teacher_outputs["policy_logits"],#[act_space],
-                        any_actions_taken
+                        teacher_outputs["policy_logits"],
+                        actions
                     )
                 else:
                     teacher_kl_loss = torch.zeros_like(combined_teacher_kl_loss)
                 combined_teacher_kl_loss = combined_teacher_kl_loss + teacher_kl_loss
-                # teacher_kl_losses[act_space] = (reduce(
+
                 teacher_kl_losses = (reduce(
                     teacher_kl_loss,
                     reduction="sum",
-                ) / any_actions_taken.sum()).detach().cpu().item()
+                )).detach().cpu().item()
 
                 learner_policy_entropy = combine_policy_entropy(
                     learner_policy_logits,
-                    any_actions_taken
+                    actions
                 )
 
                 combined_learner_entropy = combined_learner_entropy + learner_policy_entropy
-                # entropies[act_space] = -(reduce(
+
                 entropies = -(reduce(
                     learner_policy_entropy,
                     reduction="sum"
-                ) / any_actions_taken.sum()).detach().cpu().item()
-
+                )).detach().cpu().item()
             discounts = (~batch["done"]).float() * flags.discounting
             discounts = discounts.unsqueeze(-1).expand_as(combined_behavior_action_log_probs)
             values = learner_outputs["baseline"]
@@ -428,6 +397,7 @@ def learn(
                 combined_teacher_kl_loss,
                 reduction=flags.reduction
             )
+
             if flags.use_teacher:
                 teacher_baseline_loss = flags.teacher_baseline_cost * compute_baseline_loss(
                     values,
@@ -469,17 +439,17 @@ def learn(
                     "vtrace_pg_loss": vtrace_pg_loss.detach().item(),
                     "upgo_pg_loss": upgo_pg_loss.detach().item(),
                     "baseline_loss": baseline_loss.detach().item(),
-                    # "teacher_kl_loss": teacher_kl_loss.detach().item(),
-                    # "teacher_baseline_loss": teacher_baseline_loss.detach().item(),
+                    "teacher_kl_loss": teacher_kl_loss.detach().item(),
+                    "teacher_baseline_loss": teacher_baseline_loss.detach().item(),
                     "entropy_loss": entropy_loss.detach().item(),
                     "total_loss": total_loss.detach().item(),
                 },
                 "Entropy": {
                     "overall": entropies,
                 },
-                # "Teacher_KL_Divergence": {
-                #     "overall": teacher_kl_losses,
-                # },
+                "Teacher_KL_Divergence": {
+                    "overall": teacher_kl_losses,
+                },
                 "Misc": {
                     "learning_rate": last_lr,
                     "total_games_played": total_games_played
@@ -508,7 +478,7 @@ def learn(
             actor_model.load_state_dict(learner_model.state_dict())
             return stats, total_games_played
         except Exception as e:
-            print(e)
+            logging.info(f"{e}")
 
 def train(flags):
     # Necessary for multithreading and multiprocessing
@@ -708,6 +678,12 @@ def train(flags):
             },
             checkpoint_path + "_weights.pt"
         )
+        # model_artifact = wandb.Artifact('model', type='model')
+        # weights_artifact = wandb.Artifact('weights', type='weights')
+        # model_artifact.add_file(checkpoint_path + ".pt")
+        # weights_artifact.add_file(checkpoint_path + "_weights.pt")
+        # wandb.log_artifact(model_artifact)
+        # wandb.log_artifact(weights_artifact)
 
     timer = timeit.default_timer
     try:

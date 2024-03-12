@@ -25,6 +25,7 @@ class DictInputLayer(nn.Module):
                 x["info"]["available_actions_mask"],
                 x["info"].get("subtask_embeddings", None))
 
+
 class ConvEmbeddingInputLayer(nn.Module):
     def __init__(
             self,
@@ -70,9 +71,11 @@ class ConvEmbeddingInputLayer(nn.Module):
     def forward(self, x):
         cont_outs = []
         emb_outs = dict()
+
         for key,op in self.keys_to_op.items():
             in_tensor = x[key]
             if op == "embedding":
+                # logging.info(f"{key}: {self.embeddings[key]} {in_tensor}")
                 out = self.embeddings[key](in_tensor)
                 emb_outs[key] = out.permute([0,3,1,2])
             elif op == "continuous":

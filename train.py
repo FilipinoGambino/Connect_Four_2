@@ -195,15 +195,6 @@ def train_step(
 
     # compute gradients (grad)
     loss.backward()
-    '''
-    https://stackoverflow.com/questions/64856195/what-is-tape-based-autograd-in-pytorch
-    with torch.no_grad():
-        weights -= weights.grad * learning_rate
-        biases -= biases.grad * learning_rate
-        weights.grad.zero_()
-        biases.grad.zero_()
-    '''
-    optimizer.zero_grad()
 
     # Apply the gradients to the model's parameters
     optimizer.step()
@@ -238,7 +229,6 @@ gamma = 0.99
 # Keep the last episodes reward
 episodes_reward: collections.deque = collections.deque(maxlen=min_episodes_criterion)
 print(__file__)
-print(f"\nHere's yo model bitchass!!!!!\n\n{model}")
 
 
 if __name__=='__main__':

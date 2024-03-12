@@ -1,3 +1,5 @@
+import logging
+import numpy as np
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -6,10 +8,9 @@ import yaml
 import torch
 
 from connectx.utils import Stopwatch
-from connectx.connectx_gym import ConnectFour
+from connectx.connectx_gym import create_reward_space, ConnectFour, wrappers
 from connectx.nns import create_model, models
 from connectx.utils import flags_to_namespace
-from connectx.connectx_gym import create_env
 
 MODEL_CONFIG_PATH = Path(__file__).parent / "model_config.yaml"
 RL_AGENT_CONFIG_PATH = Path(__file__).parent / "rl_agent_config.yaml"
@@ -18,8 +19,15 @@ AGENT = None
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
+
 class RLAgent:
-    def __init__(self, obs, player_id):
+    def __init__(self, player_id):
         with open(MODEL_CONFIG_PATH, 'r') as file:
             self.model_flags = flags_to_namespace(yaml.safe_load(file))
         with open(RL_AGENT_CONFIG_PATH, 'r') as f:
@@ -35,10 +43,20 @@ class RLAgent:
 
         self.device = torch.device(device_id)
 
-        self.env = create_env(self.model_flags, self.device)
-        self.env.reset()
-        # obs = self.env.unwrapped[0].obs_space.get_obs_spec().sample()
-        self.action_placeholder = [torch.ones(1) for _ in range(self.model_flags.n_actor_envs)]
+        env = ConnectFour(
+            act_space=self.model_flags.act_space(),
+            obs_space=self.model_flags.obs_space(),
+            autoplay=False
+        )
+        reward_space = create_reward_space(self.model_flags)
+        env = wrappers.RewardSpaceWrapper(env, reward_space)
+        env = env.obs_space.wrap_env(env)
+        env = wrappers.LoggingEnv(env, reward_space)
+        env = wrappers.VecEnv([env])
+        env = wrappers.PytorchEnv(env, device_id)
+        self.env = wrappers.DictEnv(env)
+
+        self.action_placeholder = torch.ones(1)
 
         self.model = create_model(self.model_flags, self.device)
         checkpoint_states = torch.load(CHECKPOINT_PATH, map_location=self.device)
@@ -47,80 +65,77 @@ class RLAgent:
 
         self.stopwatch = Stopwatch()
 
-    def __call__(self, obs, raw_model_output: bool = False):
+    def __call__(self, obs, conf):
         self.stopwatch.reset()
 
         self.stopwatch.start("Observation processing")
-        # self.preprocess(obs, conf)
+        self.preprocess(obs)
+
         env_output = self.get_env_output()
-        # print(f'output: {env_output["obs"]}')
-        aam = self.env.unwrapped[0].action_space.get_available_actions_mask(env_output['obs']['filled_cells'])
-        relevant_env_output_augmented = {
-            "obs": env_output["obs"],
-            "info": {
-                "available_actions_mask": aam,
-            },
-        }
 
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
-            outputs = self.model.select_best_actions(relevant_env_output_augmented)
-            agent_output = {
-                "policy_logits": outputs["policy_logits"].cpu(),
-                "baseline": outputs["baseline"].cpu()
-            }
-            agent_output["actions"] = models.DictActor.logits_to_actions(
-                torch.flatten(agent_output["policy_logits"], start_dim=0, end_dim=-2),
-                sample=False
-            ).view(*agent_output["policy_logits"].shape[:-1], -1)
+            outputs = self.model.select_best_actions(env_output)
 
-        # Used for debugging and visualization
-        if raw_model_output:
-            return agent_output
-
-        actions = agent_output["action"]
+        action = outputs["actions"].item()
 
         self.stopwatch.stop()
 
-
-        value = agent_output["baseline"].numpy()
-        value_msg = f"Turn: {self.game_state.turn} - Predicted value: {value:.2f}"
+        value = outputs["baseline"].numpy().item(0)
+        value_msg = f"Turn: {obs['step']} - Predicted value: {value:.2f} | Column:{action} |"
         timing_msg = f"{str(self.stopwatch)}"
         overage_time_msg = f"Remaining overage time: {obs['remainingOverageTime']:.2f}"
 
-        # actions.append(annotate.sidetext(value_msg))
         print(" - ".join([value_msg, timing_msg, overage_time_msg]))
-        return actions
+        return action
 
     def get_env_output(self):
         return self.env.step(self.action_placeholder)
+
+    def preprocess(self, obs):
+        if obs['step'] == 0:
+            self.unwrapped_env.reset()
+        else:
+            self.unwrapped_env.manual_step(obs)
 
     def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
         """
         Moves the predictions to the cpu, applies the inverse of all augmentations,
         and then returns the mean prediction for each available action.
         """
-        # if len(self.data_augmentations) == 0:
         return policy.cpu()
-
-        # policy_reoriented = [{key: val[0].unsqueeze(0) for key, val in policy.items()}]
-        # for i, augmentation in enumerate(self.data_augmentations):
-        #     augmented_policy = {key: val[i + 1].unsqueeze(0) for key, val in policy.items()}
-        #     policy_reoriented.append(augmentation.apply(augmented_policy, inverse=True, is_policy=True))
-        # return {
-        #     key: torch.cat([d[key] for d in policy_reoriented], dim=0).mean(dim=0, keepdim=True)
-        #     for key in policy.keys()
-        # }
 
     @property
     def unwrapped_env(self) -> ConnectFour:
         return self.env.unwrapped[0]
 
-    @property
-    def game_state(self):
-        return self.unwrapped_env.env.state
 
 if __name__=="__main__":
-    agent = RLAgent(1)
-    # print(agent(agent.env.reset()))
-    # print(CHECKPOINT_PATH)
+    from kaggle_environments import evaluate, make
+    env = make('connectx', debug=False)
+
+    env.reset()
+    env.run([RLAgent(1), 'random'])
+    print(f"\np1 v random\n{env.render(mode='ansi')}")
+    env.reset()
+    env.run(['negamax', RLAgent(2)])
+    print(f"\np2 v negamax\n{env.render(mode='ansi')}")
+    env.reset()
+    env.run([RLAgent(1), 'negamax'])
+    print(f"\np1 v negamax\n{env.render(mode='ansi')}")
+    env.reset()
+
+    def mean_reward1(rewards):
+        return sum(r[0] for r in rewards) / float(len(rewards))
+
+    def mean_reward2(rewards):
+        return sum(r[-1] for r in rewards) / float(len(rewards))
+
+
+    # Run multiple episodes to estimate its performance.
+    # print("My Agent vs Random Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100)))
+    # print("My Agent vs Random Agent:", mean_reward2(evaluate("connectx", ["random", RLAgent(2)], num_episodes=100)))
+    # print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=10)))
+    # print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=10)))
+
+    # print(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100))

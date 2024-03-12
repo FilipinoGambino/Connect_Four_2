@@ -1,8 +1,8 @@
 name: Running Monobeast
 
 on:
-  push:
-#  workflow_dispatch:
+#  push:
+  workflow_dispatch:
 
 jobs:
   run-monobeast:
@@ -25,5 +25,7 @@ jobs:
             WANDB_API: ${{ secrets.WANDB_KEY }}
           run: wandb login "$WANDB_API"
 
-        - name: Running monobeast
-          run: python run_monobeast.py
+#        - name: Running monobeast
+#          run: python run_monobeast.py
+        - name: Running supervision
+          run: python connectx/supervision/run_supervision.py

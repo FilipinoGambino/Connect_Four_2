@@ -1,10 +1,19 @@
 import copy
 import gym
+import math
 import numpy as np
 import torch
 from typing import Dict, List, Union, Tuple
 
 from .reward_spaces import BaseRewardSpace
+
+import logging
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
 
 
 class LoggingEnv(gym.Wrapper):
@@ -12,16 +21,16 @@ class LoggingEnv(gym.Wrapper):
         super(LoggingEnv, self).__init__(env)
         self.reward_space = reward_space
         self.vals_peak = {}
-        self.reward_sum = []
+        self.reward_sum = [0., 0.]
 
-    def info(self, info: Dict[str, np.ndarray], rewards: int) -> Dict[str, np.ndarray]:
+    def info(self, info: Dict[str, np.ndarray], reward: int) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
-        logs = dict(step=self.env.unwrapped.turn)
+        step = self.env.unwrapped.turn
+        logs = dict(step=step)
 
-        self.reward_sum.append(rewards)
-        logs["mean_cumulative_rewards"] = [np.mean(self.reward_sum)]
-        logs["mean_cumulative_reward_magnitudes"] = [np.mean(np.abs(self.reward_sum))]
-        logs["max_cumulative_rewards"] = [np.max(self.reward_sum)]
+        self.reward_sum[(step-1) % 2] += reward
+        logs["p1_rewards"] = [self.reward_sum[0]]
+        logs["p2_rewards"] = [self.reward_sum[1]]
 
 
         info.update({f"LOGGING_{key}": np.array(val, dtype=np.float32) for key, val in logs.items()})
@@ -31,7 +40,7 @@ class LoggingEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
-        self.reward_sum = []
+        self.reward_sum = [0., 0.]
         return obs, [reward], done, self.info(info, reward)
 
     def step(self, action: Dict[str, np.ndarray]):
@@ -45,7 +54,7 @@ class RewardSpaceWrapper(gym.Wrapper):
         self.reward_space = reward_space
 
     def _get_rewards_and_done(self) -> Tuple[Tuple[float, float], bool]:
-        rewards, done = self.reward_space.compute_rewards(self.unwrapped)
+        rewards, done = self.reward_space.compute_rewards(self.unwrapped.game_state)
         return rewards, done
 
     def reset(self, **kwargs):
@@ -70,12 +79,6 @@ class VecEnv(gym.Env):
 
     @staticmethod
     def _vectorize_env_outs(env_outs: List[Tuple]) -> Tuple:
-        # if len(env_outs[0]) < 4:
-        #     obs_list, info_list = zip(*env_outs)
-        #     obs_stacked = VecEnv._stack_dict(obs_list)
-        #     info_stacked = VecEnv._stack_dict(info_list)
-        #     return obs_stacked, info_stacked
-        # else:
         obs_list, reward_list, done_list, info_list = zip(*env_outs)
         obs_stacked = VecEnv._stack_dict(obs_list)
         reward_stacked = np.array(reward_list)
@@ -106,12 +109,6 @@ class VecEnv(gym.Env):
 
     def close(self):
         return [env.close() for env in self.envs]
-
-    # def seed(self, seed: Optional[int] = None) -> list:
-    #     if seed is not None:
-    #         return [env.seed(seed + i) for i, env in enumerate(self.envs)]
-    #     else:
-    #         return [env.seed(seed) for i, env in enumerate(self.envs)]
 
     @property
     def unwrapped(self) -> List[gym.Env]:

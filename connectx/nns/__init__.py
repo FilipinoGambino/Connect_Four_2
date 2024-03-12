@@ -3,6 +3,7 @@ from torch import nn
 from typing import Optional
 
 from .models import BasicActorCriticNetwork
+from .conv_blocks import ResidualBlock
 from .in_blocks import ConvEmbeddingInputLayer
 from .attn_blocks import MHABlock, ViTBlock
 from ..connectx_gym import create_flexible_obs_space, obs_spaces
@@ -56,11 +57,18 @@ def _create_model(
                 normalize=flags.normalize,
             ) for _ in range(flags.n_blocks)]
         )
-    elif flags.model_arch == "linear_model":
+    elif flags.model_arch == "conv_model":
         base_model = nn.Sequential(
             conv_embedding_input_layer,
-            *[(nn.Linear(flags.out_dim, flags.hidden_dim),
-            nn.LeakyReLU(),
+            *[ResidualBlock(
+                in_channels=flags.hidden_dim,
+                out_channels=flags.hidden_dim,
+                height=BOARD_SIZE[0],
+                width=BOARD_SIZE[1],
+                kernel_size=flags.kernel_size,
+                normalize=flags.normalize,
+                activation=nn.LeakyReLU,
+                rescale_se_input=flags.rescale_se_input,
             ) for _ in range(flags.n_blocks)]
         )
     else:
@@ -74,4 +82,5 @@ def _create_model(
         n_value_heads=1,
         rescale_value_input=flags.rescale_value_input
     )
+
     return model.to(device=device)

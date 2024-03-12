@@ -12,6 +12,10 @@ from pathlib import Path
 from torch import multiprocessing as mp
 import wandb
 
+try:
+    from api_key import WANDB_API_KEY
+except ImportError:
+    pass
 from connectx.utils import flags_to_namespace
 from connectx.torchbeast.monobeast import train
 
@@ -60,7 +64,7 @@ def get_default_flags(flags: DictConfig) -> DictConfig:
     return OmegaConf.create(flags)
 
 
-@hydra.main(config_path="conf", config_name="new_beginnings", version_base=None)
+@hydra.main(config_path="conf", config_name="conv_phase1", version_base=None)
 def main(flags: DictConfig):
     cli_conf = OmegaConf.from_cli()
     #TODO add this back?\/
@@ -81,7 +85,7 @@ def main(flags: DictConfig):
 
     flags = get_default_flags(flags)
     logging.info(OmegaConf.to_yaml(flags, resolve=True))
-    OmegaConf.save(flags, "config.yaml")
+    OmegaConf.save(flags, "outputs/config.yaml")
     flags = flags_to_namespace(OmegaConf.to_container(flags))
     if not flags.disable_wandb:
         wandb.init(
@@ -92,11 +96,14 @@ def main(flags: DictConfig):
             name=flags.name,
         )
 
-    # flags = flags_to_namespace(OmegaConf.to_container(flags))
     # mp.set_sharing_strategy(flags.sharing_strategy)
     train(flags)
 
 
 if __name__ == "__main__":
     # mp.set_start_method("spawn")
+    try:
+        wandb.login(key=WANDB_API_KEY)
+    except NameError:
+        pass
     main()

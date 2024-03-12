@@ -5,7 +5,6 @@ import numpy as np
 import numpy.ma as ma
 import gym
 import torch
-from kaggle_environments.core import Environment
 from typing import Dict, List, Optional, Tuple
 
 from connectx.utility_constants import BOARD_SIZE
@@ -21,12 +20,12 @@ class BaseActSpace(ABC):
     def process_actions(
             self,
             action_tensors_dict: np.ndarray,
-            game_state: Environment,
+            game_state: np.ndarray,
     ) -> List[str]:
         pass
 
     @staticmethod
-    def get_available_actions_mask(game_state: Environment) -> Dict[str, np.ndarray]:
+    def get_available_actions_mask(game_state: np.ndarray) -> Dict[str, np.ndarray]:
         pass
 
 
@@ -46,33 +45,7 @@ class BasicActionSpace(BaseActSpace):
 
     @staticmethod
     def get_available_actions_mask(game_state: np.ndarray) -> Dict[str, np.ndarray]:
-        available_actions_mask = np.array(game_state.all(axis=1), dtype=bool)
-        # filled_cells = np.where(game_state != 0, True, False)#.repeat(BOARD_SIZE[1],axis=0)
-        # filled_cells = np.eye(6,7,dtype=bool)
-        # filled_cells = np.expand_dims(filled_cells,axis=-1)
-        # filled_cells = filled_cells.repeat(BOARD_SIZE[1],axis=-1)
-        return available_actions_mask
-
-
-class ImitationActionSpace(BaseActSpace):
-    def get_action_space(self) -> gym.spaces.Dict:
-        columns = BOARD_SIZE[1]
-        return gym.spaces.Discrete(columns)
-
-    def process_actions(
-            self,
-            action_logits: np.ndarray,
-            game_state: np.ndarray,
-    ) -> Tuple[List[List[str]], Dict[str, np.ndarray]]:
-        mask = BasicActionSpace.get_available_actions_mask(game_state)
-        valid_actions = ma.masked_array(action_logits, mask=mask)
-        return valid_actions
-
-    @staticmethod
-    def get_available_actions_mask(game_state) -> Dict[str, np.ndarray]:
-        mask_env = deepcopy(game_state)
-        mask_env.run(['negamax', 'negamax'])
-        available_actions_mask = np.array(game_state.all(axis=1), dtype=bool).reshape([1,COLUMNS])
+        available_actions_mask = np.array(game_state.all(axis=0), dtype=bool)
         return available_actions_mask
 
 

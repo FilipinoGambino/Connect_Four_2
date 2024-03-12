@@ -1,42 +1,61 @@
+import numpy as np
 from scipy.signal import convolve2d
+import logging
 
-from .game_objects import Player, GameBoard
+from ..connectx_game.game_objects import Player
+from ..utility_constants import BOARD_SIZE, IN_A_ROW, VICTORY_KERNELS, GAME_STATUS
 
-IN_A_ROW = 4
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
 
 class Game:
-    def __init__(self, config=None):
-        self.config = config
-
-        height = config.rows
-        width = config.cols
-        self.board = GameBoard(height, width)
-
-        self.players = [Player(1), Player(2)]
+    def __init__(self):
+        self.board = np.zeros(shape=BOARD_SIZE, dtype=np.uint8)
         self.turn = 0
-        self.done = False
-        self.info = {}
+        self.players = [Player(1), Player(2)]
 
-    def step(self, col):
+    def update(self, obs):
+        self.board = np.array(obs['board'], dtype=np.uint8).reshape(BOARD_SIZE)
+        self.turn = obs['step']
+
+    def step(self, action):
+        row = self.get_lowest_available_row(action)
+        self.board[row, action] = self.players[self.turn % 2].mark
         self.turn += 1
-        active_player = self.turn % 2
-        inactive_player = (self.turn + 1) % 2
 
-        self.board.place_mark(col, self.players[active_player].mark)
+    def get_lowest_available_row(self, column):
+        for row in range(BOARD_SIZE[0]-1,-1,-1):
+            if self.board[row,column] == 0:
+                return row
+        raise StopIteration(f"Column {column} is full. {self.board}")
 
-        if self.turn > IN_A_ROW and self.winning_move:
-            self.players[active_player].winner()
-            self.players[inactive_player].loser()
-            self.done = True
-        elif self.turn > IN_A_ROW and self.no_valid_moves:
-            # Tie
-            [player.winner() for player in self.players]
+    @property
+    def active_player(self):
+        '''
+        Only called after step which increments turn
+        :return: The active player object
+        '''
+        # assert self.turn == self.board.size - np.count_nonzero(self.board==0)
+        return self.players[self.turn % 2]
 
-    def winning_move(self):
-        for kernel in self.board.victory_kernels:
-            if (convolve2d(self.board == self.players[self.turn], kernel, mode="valid") == IN_A_ROW).any():
-                return True
-        return False
+    @property
+    def inactive_player(self):
+        '''
+        Only called after step which increments turn
+        :return: The inactive player object
+        '''
+        # assert self.turn == self.board.size - np.count_nonzero(self.board==0)
+        return self.players[(self.turn + 1) % 2]
 
-    def no_valid_moves(self):
-        return ~(self.board == 0).any()
+    @property
+    def max_turns(self):
+        if isinstance(self.board, np.ndarray):
+            return self.board.size
+        elif isinstance(self.board, list):
+            return len(self.board)
+        else:
+            raise NotImplementedError
