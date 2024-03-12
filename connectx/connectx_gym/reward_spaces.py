@@ -41,11 +41,9 @@ class FullGameRewardSpace(BaseRewardSpace):
     """
     A class used for defining a reward space for the full game.
     """
-    def compute_rewards(self, game_state: Game) -> Tuple[Tuple[float, float], bool]:
-        pass
 
     @abstractmethod
-    def _compute_rewards(self, game_state: Game) -> Tuple[float, float]:
+    def compute_rewards(self, game_state: Game) -> Tuple[Tuple[float, float], bool]:
         pass
 
 
@@ -71,7 +69,7 @@ class GameResultReward(FullGameRewardSpace):
         if game_state.turn > IN_A_ROW * 2:
             p1 = game_state.inactive_player
             p2 = game_state.active_player
-            for idx,kernel in enumerate(VICTORY_KERNELS):
+            for idx,kernel in enumerate(VICTORY_KERNELS.values()):
                 convolutions = convolve2d(game_state.board == p1.mark, kernel, mode="valid")
                 if np.max(convolutions) == IN_A_ROW:
                     reward = 1.
@@ -84,7 +82,7 @@ class GameResultReward(FullGameRewardSpace):
                 board = game_state.board.copy()
                 row = game_state.get_lowest_available_row(col)
                 board[row,col] = p2.mark
-                for kernel in VICTORY_KERNELS:
+                for kernel in VICTORY_KERNELS.values():
                     convolutions = convolve2d(board == p2.mark, kernel, mode="valid")
                     if np.max(convolutions) == IN_A_ROW:
                         reward = -1.
@@ -95,14 +93,12 @@ class GameResultReward(FullGameRewardSpace):
         done = False
         return reward, done
 
-    def _compute_rewards(self, game_state: Game) -> float:
-        raise NotImplementedError
 
 class DiagonalEmphasisReward(BaseRewardSpace):
     @staticmethod
     def get_reward_spec() -> RewardSpec:
         return RewardSpec(
-            reward_min=-1.,
+            reward_min=0.,
             reward_max=1.,
             zero_sum=False,
             only_once=False
@@ -112,34 +108,38 @@ class DiagonalEmphasisReward(BaseRewardSpace):
         self.board_size = math.prod(BOARD_SIZE)
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
+        p1 = game_state.inactive_player # The player that just performed an action
+        p2 = game_state.active_player
+
+        cells_to_check = dict(horizontal=[(1,0),(2,0),(3,0)],
+                              vertical=[(0,1),(0,2),(0,3)],
+                              diagonal_identity=[(1,1),(2,2),(3,3)],
+                              diagonal_flipped=[(-1,1),(-2,2),(-3,3)])
         reward = 0
         done = False
-        p = game_state.inactive_player # The player that just performed an action
-        for idx,kernel in enumerate(VICTORY_KERNELS):
-            convolutions = convolve2d(game_state.board == p.mark, kernel, mode="valid")
-            if np.max(convolutions) == IN_A_ROW:
-                if idx >= 2:  # diagonal kernel
-                    reward = 1.
-                    done = True
-                else:
-                    reward = .4
-                    done = True
-            # Checks if any combination of [IN_A_ROW - 1] along the kernel are p.mark (e.g. [1 1 2 1] if p.mark = 1)
-            elif np.max(convolutions) == IN_A_ROW - 1:
-                if idx >= 2:  # diagonal kernel
-                    reward = max(reward, .3)
-                    done = done == True
-                else:
-                    reward = .1
-                    done = done == True
+        for row, col in np.argwhere(game_state.board == p1.mark):
+            for key, pairs in cells_to_check.items():
+                count = 1
+                for r,c in pairs:
+                    r_cell, c_cell = r+row, c+col
+                    if not 0 <= r_cell < BOARD_SIZE[0] or not 0 <= c_cell < BOARD_SIZE[1] or \
+                        game_state.board[r_cell][c_cell] == p2.mark:
+                        break
 
-        base_reward = 0 if (game_state.turn - 1) < 30 else -.5
-        reward = max(reward, base_reward)
-        done = done == True
+                    if game_state.board[r_cell][c_cell] == p1.mark:
+                        count += 1
+                    elif game_state.board[r_cell][c_cell] == 0:
+                        continue
+
+                    if count >= 4:
+                        reward = max(reward, 1. if key.startswith('diagonal') else .25)
+                        done = True
+                    elif count == 3:
+                        reward = max(reward, .15 if key.startswith('diagonal') else .05)
+                    elif count == 2:
+                        reward = max(reward, 1/42 if key.startswith('diagonal') else 0.)
+
         return reward, done
-
-    def _compute_rewards(self, game_state: Game) -> float:
-        pass
 
 
 class MoreInARowReward(BaseRewardSpace):

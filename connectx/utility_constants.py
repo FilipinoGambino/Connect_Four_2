@@ -15,10 +15,9 @@ vertical_kernel = np.transpose(horizontal_kernel)
 diag1_kernel = np.eye(IN_A_ROW, dtype=np.uint8)
 diag2_kernel = np.fliplr(diag1_kernel)
 
-VICTORY_KERNELS = [
-    horizontal_kernel,
-    vertical_kernel,
-    diag1_kernel,
-    diag2_kernel,
-]
-
+VICTORY_KERNELS = dict(
+    horizontal=horizontal_kernel,
+    vertical=vertical_kernel,
+    diagonal_identity_matrix=diag1_kernel,
+    diagonal_identity_flipped=diag2_kernel,
+)
