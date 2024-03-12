@@ -76,16 +76,6 @@ class RLAgent:
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
             outputs = self.model.select_best_actions(env_output)
-            # outputs = self.model.sample_actions(env_output)
-            # agent_output = {
-            #     "policy_logits": outputs["policy_logits"].cpu(),
-            #     "baseline": outputs["baseline"].cpu()
-            # }
-            # agent_output["actions"] = models.DictActor.logits_to_actions(
-            #     torch.flatten(agent_output["policy_logits"], start_dim=0, end_dim=-2),
-            #     sample=False
-            # ).view(*agent_output["policy_logits"].shape[:-1], -1)
-
 
         action = outputs["actions"].item()
 

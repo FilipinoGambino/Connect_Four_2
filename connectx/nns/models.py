@@ -97,6 +97,7 @@ class MultiLinear(nn.Module):
             biases = self.biases[embedding_idxs]
         return torch.matmul(x.unsqueeze(1), weights).squeeze(1) + biases
 
+
 class BaselineLayer(nn.Module):
     def __init__(self, in_channels: int, reward_space: RewardSpec, n_value_heads: int, rescale_input: bool):
         super(BaselineLayer, self).__init__()

@@ -6,18 +6,18 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: conv_phase1_teacher_opp
+name: conv_phase2
 ## WANDB params
 # The wandb project name
 project: ConnectX
 # The wandb user to log to
 entity: filipinogambino
 # The wandb group for the run
-group: historical
+group: loss_fix
 
 # Parameters to overwrite
 use_mixed_precision: false
-total_steps: 5e5
+total_steps: 3e5
 batch_size: 8
 checkpoint_freq: 60.
 num_actors: 2
@@ -28,7 +28,7 @@ model_arch: conv_model
 embedding_dim: 32
 hidden_dim: 128
 kernel_size: 3
-n_blocks: 8
+n_blocks: 12
 device: cpu
 rescale_value_input: false
 rescale_se_input: false
@@ -61,8 +61,8 @@ reduction: mean
 
 # Pretrained model for KL loss
 use_teacher: true
-teacher_load_dir: outputs/03-03/13-46-27
-teacher_checkpoint_file: 500224_weights.pt
+teacher_load_dir: outputs/03-11/19-25-07
+teacher_checkpoint_file: 300032_weights.pt
 
 # MISCELLANEOUS params
 actor_device: cpu

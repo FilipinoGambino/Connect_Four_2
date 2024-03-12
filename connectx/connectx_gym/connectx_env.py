@@ -1,4 +1,3 @@
-from kaggle_environments import make
 from typing import Any, Dict, List, Optional, Tuple
 import gym
 import math
@@ -38,7 +37,7 @@ class ConnectFour(gym.Env):
         if configuration is not None:
             self.configuration = configuration
         else:
-            self.configuration = make("connectx").configuration
+            self.configuration = dict(rows=6, columns=7, inarow=4)
 
         self.autoplay = autoplay
 

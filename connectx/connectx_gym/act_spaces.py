@@ -5,7 +5,6 @@ import numpy as np
 import numpy.ma as ma
 import gym
 import torch
-from kaggle_environments.core import Environment
 from typing import Dict, List, Optional, Tuple
 
 from connectx.utility_constants import BOARD_SIZE
@@ -21,12 +20,12 @@ class BaseActSpace(ABC):
     def process_actions(
             self,
             action_tensors_dict: np.ndarray,
-            game_state: Environment,
+            game_state: np.ndarray,
     ) -> List[str]:
         pass
 
     @staticmethod
-    def get_available_actions_mask(game_state: Environment) -> Dict[str, np.ndarray]:
+    def get_available_actions_mask(game_state: np.ndarray) -> Dict[str, np.ndarray]:
         pass
 
 

@@ -6,14 +6,14 @@ hydra:
   run:
     dir: ./outputs/${now:%m-%d}/${now:%H-%M-%S}
 
-name: conv_phase3_even_better_games
+name: conv_phase3
 ## WANDB params
 # The wandb project name
 project: ConnectX
 # The wandb user to log to
 entity: filipinogambino
 # The wandb group for the run
-group: historical
+group: loss_fix
 
 # Parameters to overwrite
 use_mixed_precision: false
@@ -28,7 +28,7 @@ model_arch: conv_model
 embedding_dim: 32
 hidden_dim: 128
 kernel_size: 3
-n_blocks: 8
+n_blocks: 24
 device: cpu
 rescale_value_input: false
 rescale_se_input: false
@@ -45,7 +45,7 @@ reward_space: LongGameReward
 ## OPTIMIZER params
 optimizer_class: Adam
 optimizer_kwargs:
-  lr: 5e-6
+  lr: 1e-7
   # See https://arxiv.org/pdf/2105.05246.pdf
   eps: 0.0003
   # alpha: 0.9

@@ -25,6 +25,7 @@ class DictInputLayer(nn.Module):
                 x["info"]["available_actions_mask"],
                 x["info"].get("subtask_embeddings", None))
 
+
 class ConvEmbeddingInputLayer(nn.Module):
     def __init__(
             self,
