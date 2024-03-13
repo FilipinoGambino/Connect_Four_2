@@ -181,10 +181,8 @@ def act(
         timings = prof.Timings()
 
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
-
         env_output = env.reset(force=True)
-        # board = env_output['obs']['p1_cells'][0] + (env_output['obs']['p2_cells'][0] * 2)
-        # logging.info(f"Resetting\n{board}")
+
         agent_output = actor_model.sample_actions(env_output)
 
         while True:

@@ -115,15 +115,15 @@ if __name__=="__main__":
     env = make('connectx', debug=False)
 
     env.reset()
-    # env.run([RLAgent(1), 'random'])
-    # print(f"\np1 v random\n{env.render(mode='ansi')}")
-    # env.reset()
-    # env.run(['negamax', RLAgent(2)])
-    # print(f"\np2 v negamax\n{env.render(mode='ansi')}")
-    # env.reset()
-    # env.run([RLAgent(1), 'negamax'])
-    # print(f"\np1 v negamax\n{env.render(mode='ansi')}")
-    # env.reset()
+    env.run([RLAgent(1), 'random'])
+    print(f"\np1 v random\n{env.render(mode='ansi')}")
+    env.reset()
+    env.run(['negamax', RLAgent(2)])
+    print(f"\np2 v negamax\n{env.render(mode='ansi')}")
+    env.reset()
+    env.run([RLAgent(1), 'negamax'])
+    print(f"\np1 v negamax\n{env.render(mode='ansi')}")
+    env.reset()
 
     def mean_reward1(rewards):
         return sum(r[0] for r in rewards) / float(len(rewards))
@@ -133,9 +133,9 @@ if __name__=="__main__":
 
 
     # Run multiple episodes to estimate its performance.
-    print("My Agent vs Random Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100)))
-    print("My Agent vs Random Agent:", mean_reward2(evaluate("connectx", ["random", RLAgent(2)], num_episodes=100)))
-    print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=10)))
-    print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=10)))
+    # print("My Agent vs Random Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100)))
+    # print("My Agent vs Random Agent:", mean_reward2(evaluate("connectx", ["random", RLAgent(2)], num_episodes=100)))
+    # print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=10)))
+    # print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=10)))
 
     # print(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100))

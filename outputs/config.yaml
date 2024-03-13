@@ -1,4 +1,4 @@
-name: conv_phase2
+name: conv_phase3
 project: ConnectX
 entity: filipinogambino
 group: diagonals
@@ -14,7 +14,7 @@ model_arch: conv_model
 embedding_dim: 32
 hidden_dim: 128
 kernel_size: 3
-n_blocks: 12
+n_blocks: 18
 device: cpu
 rescale_value_input: false
 rescale_se_input: false
@@ -27,7 +27,7 @@ obs_space: HistoricalObs
 reward_space: DiagonalEmphasisReward
 optimizer_class: Adam
 optimizer_kwargs:
-  lr: 1.0e-05
+  lr: 5.0e-06
   eps: 0.0003
 min_lr_mod: 0.02
 entropy_cost: 0.001
@@ -36,7 +36,7 @@ teacher_kl_cost: 0.005
 lmb: 0.8
 reduction: mean
 use_teacher: true
-teacher_load_dir: outputs/03-12/14-39-05
+teacher_load_dir: outputs/03-12/15-51-11
 teacher_checkpoint_file: 500224_weights.pt
 actor_device: cpu
 learner_device: cpu

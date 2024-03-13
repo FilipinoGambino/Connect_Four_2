@@ -1,0 +1,53 @@
+{
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.9.6",
+    "heartbeatAt": "2024-03-13T01:31:39.617378",
+    "startedAt": "2024-03-13T01:31:38.904845",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "D:\\Nick\\Documents\\GitHub\\Connect_Four_2\\run_monobeast.py",
+    "codePathLocal": "run_monobeast.py",
+    "codePath": "run_monobeast.py",
+    "git": {
+        "remote": "https://github.com/FilipinoGambino/Connect_Four_2.git",
+        "commit": "1bc0f881b3130747a4653bcbe04f1151027c1d91"
+    },
+    "email": "ngorichs1@gmail.com",
+    "root": "D:/Nick/Documents/GitHub/Connect_Four_2",
+    "host": "NickPC",
+    "username": "Nick",
+    "executable": "D:\\Nick\\Documents\\GitHub\\Connect_Four_2\\venv\\Scripts\\python.exe",
+    "cpu_count": 4,
+    "cpu_count_logical": 4,
+    "cpu_freq": {
+        "current": 3401.0,
+        "min": 0.0,
+        "max": 3401.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3401.0,
+            "min": 0.0,
+            "max": 3401.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 418.7450981140137,
+            "used": 279.8965530395508
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 2070 SUPER",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 2070 SUPER",
+            "memory_total": 8589934592
+        }
+    ],
+    "memory": {
+        "total": 15.939006805419922
+    }
+}

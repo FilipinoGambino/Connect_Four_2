@@ -111,28 +111,39 @@ class DiagonalEmphasisReward(BaseRewardSpace):
         p1 = game_state.inactive_player # The player that just performed an action
         p2 = game_state.active_player
 
+        reward, done = self.compute_player_reward(game_state, p1.mark, p2.mark)
+        p1.reward += reward
+
+        # This is double dipping
+        # reward, done = self.compute_player_reward(game_state, p2.mark, p1.mark)
+        # p2.reward += reward
+
+        return p1.reward, done
+
+    def compute_player_reward(self, game_state: Game, mark1: int, mark2: int):
         cells_to_check = dict(horizontal=[(1,0),(2,0),(3,0)],
                               vertical=[(0,1),(0,2),(0,3)],
                               diagonal_identity=[(1,1),(2,2),(3,3)],
                               diagonal_flipped=[(-1,1),(-2,2),(-3,3)])
+
         reward = 0
         done = False
-        for row, col in np.argwhere(game_state.board == p1.mark):
+        for row, col in np.argwhere(game_state.board == mark1):
             for key, pairs in cells_to_check.items():
                 count = 1
                 for r,c in pairs:
                     r_cell, c_cell = r+row, c+col
                     if not 0 <= r_cell < BOARD_SIZE[0] or not 0 <= c_cell < BOARD_SIZE[1] or \
-                        game_state.board[r_cell][c_cell] == p2.mark:
+                        game_state.board[r_cell][c_cell] == mark2:
                         break
 
-                    if game_state.board[r_cell][c_cell] == p1.mark:
+                    if game_state.board[r_cell][c_cell] == mark1:
                         count += 1
                     elif game_state.board[r_cell][c_cell] == 0:
                         continue
 
                     if count >= 4:
-                        reward = max(reward, 1. if key.startswith('diagonal') else .25)
+                        reward = max(reward, 1. if key.startswith('diagonal') else .20)
                         done = True
                     elif count == 3:
                         reward = max(reward, .15 if key.startswith('diagonal') else .05)
@@ -140,7 +151,6 @@ class DiagonalEmphasisReward(BaseRewardSpace):
                         reward = max(reward, 1/42 if key.startswith('diagonal') else 0.)
 
         return reward, done
-
 
 class MoreInARowReward(BaseRewardSpace):
     @staticmethod

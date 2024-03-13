@@ -22,12 +22,15 @@ class LoggingEnv(gym.Wrapper):
         self.reward_space = reward_space
         self.vals_peak = {}
         self.reward_sum = [0., 0.]
+        self.sum_reward = [0.]
 
     def info(self, info: Dict[str, np.ndarray], reward: int) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
         step = self.env.unwrapped.turn
         logs = dict(step=step)
 
+        self.sum_reward[0] += reward
+        logs['all_rewards'] = self.sum_reward
         self.reward_sum[(step-1) % 2] += reward
         logs["p1_rewards"] = [self.reward_sum[0]]
         logs["p2_rewards"] = [self.reward_sum[1]]
@@ -40,6 +43,7 @@ class LoggingEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
+        self.sum_reward = [0.]
         self.reward_sum = [0., 0.]
         return obs, [reward], done, self.info(info, reward)
 
