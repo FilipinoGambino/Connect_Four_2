@@ -5,7 +5,7 @@ model_arch: conv_model
 embedding_dim: 32
 hidden_dim: 128
 kernel_size: 3
-n_blocks: 18
+n_blocks: 8
 device: cpu
 rescale_value_input: false
 rescale_se_input: false

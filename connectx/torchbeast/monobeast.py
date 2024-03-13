@@ -72,6 +72,7 @@ class MyThread(threading.Thread):
             self.target(self.args)
         except Exception as e:
             print(f'An exception occured in thread "{self.name}":\n{e}')
+            return
 
 
 def combine_policy_logits_to_log_probs(
@@ -200,10 +201,10 @@ def act(
                 env_output = env.step(agent_output["actions"])
                 if env_output["done"].any():
 
-                    # Cache reward, done, and info["actions_taken"] from the terminal step
+                    # Cache reward, done, and info from the terminal step
                     cached_reward = env_output["reward"]
                     cached_done = env_output["done"]
-                    # cached_info_actions_taken = env_output["info"]["actions_taken"]
+
                     cached_info_logging = {
                         key: val for key, val in env_output["info"].items() if key.startswith("LOGGING_")
                     }
@@ -214,8 +215,6 @@ def act(
 
                     env_output["info"].update(cached_info_logging)
 
-                # board = env_output['obs']['p1_cells'][0] + (env_output['obs']['p2_cells'][0] * 2)
-                # logging.info(f"After stepping\n{board}")
                 timings.time("step")
                 fill_buffers_inplace(buffers[index], dict(**env_output, **agent_output), t + 1)
                 timings.time("write")

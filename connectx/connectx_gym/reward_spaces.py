@@ -98,7 +98,7 @@ class DiagonalEmphasisReward(BaseRewardSpace):
     @staticmethod
     def get_reward_spec() -> RewardSpec:
         return RewardSpec(
-            reward_min=0.,
+            reward_min=-1.,
             reward_max=1.,
             zero_sum=False,
             only_once=False
@@ -125,30 +125,45 @@ class DiagonalEmphasisReward(BaseRewardSpace):
                               vertical=[(0,1),(0,2),(0,3)],
                               diagonal_identity=[(1,1),(2,2),(3,3)],
                               diagonal_flipped=[(-1,1),(-2,2),(-3,3)])
+        max_row = BOARD_SIZE[0]
+        max_col = BOARD_SIZE[1]
 
         reward = 0
         done = False
-        for row, col in np.argwhere(game_state.board == mark1):
+        for mark_row, mark_col in np.argwhere(game_state.board == mark1):
             for key, pairs in cells_to_check.items():
                 count = 1
-                for r,c in pairs:
-                    r_cell, c_cell = r+row, c+col
-                    if not 0 <= r_cell < BOARD_SIZE[0] or not 0 <= c_cell < BOARD_SIZE[1] or \
-                        game_state.board[r_cell][c_cell] == mark2:
+                for check_row, check_col in pairs:
+                    row, col = check_row + mark_row, check_col + mark_col
+                    if not 0 <= row < max_row or not 0 <= col < max_col or game_state.board[row][col] == mark2:
                         break
 
-                    if game_state.board[r_cell][c_cell] == mark1:
+                    if game_state.board[row][col] == mark1:
                         count += 1
-                    elif game_state.board[r_cell][c_cell] == 0:
+                    elif game_state.board[row][col] == 0:
                         continue
 
-                    if count >= 4:
-                        reward = max(reward, 1. if key.startswith('diagonal') else .20)
-                        done = True
-                    elif count == 3:
-                        reward = max(reward, .15 if key.startswith('diagonal') else .05)
-                    elif count == 2:
-                        reward = max(reward, 1/42 if key.startswith('diagonal') else 0.)
+                    if key.startswith('diagonal'):
+                        if count >= 4:
+                            r = 1.
+                            done = True
+                        elif count == 3:
+                            r = .5
+                        elif count == 2:
+                            r = 1/42
+                        else:
+                            r = 0
+                    else:
+                        if count >= 4:
+                            r = -1.
+                            done = True
+                        elif count == 3:
+                            r = -.3
+                        elif count == 2:
+                            r = 1/42
+                        else:
+                            r = 0
+                    reward = max(r, reward)
 
         return reward, done
 

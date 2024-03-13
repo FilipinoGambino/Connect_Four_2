@@ -17,12 +17,12 @@ group: diagonals
 
 # Parameters to overwrite
 use_mixed_precision: false
-total_steps: 5e5
+total_steps: 1e6
 batch_size: 8
 checkpoint_freq: 60.
 num_actors: 1
 n_actor_envs: 16
-unroll_length: 16
+unroll_length: 64
 seed: 42
 model_arch: conv_model
 embedding_dim: 32
