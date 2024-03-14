@@ -106,6 +106,12 @@ class DiagonalEmphasisReward(BaseRewardSpace):
     def __init__(self, **kwargs):
         super(DiagonalEmphasisReward, self).__init__(**kwargs)
         self.board_size = math.prod(BOARD_SIZE)
+        self.win_type = dict(no_win=0,
+                             horizontal=0,
+                             vertical=1,
+                             diagonal_identity=2,
+                             diagonal_flipped=3)
+        self.game_win_type = self.win_type['no_win']
 
     def compute_rewards(self, game_state: Game) -> Tuple[float, bool]:
         p1 = game_state.inactive_player # The player that just performed an action
@@ -128,7 +134,9 @@ class DiagonalEmphasisReward(BaseRewardSpace):
         max_row = BOARD_SIZE[0]
         max_col = BOARD_SIZE[1]
 
-        reward = 0
+        self.game_win_type = self.win_type['no_win']
+
+        r = [0]
         done = False
         for mark_row, mark_col in np.argwhere(game_state.board == mark1):
             for key, pairs in cells_to_check.items():
@@ -145,27 +153,30 @@ class DiagonalEmphasisReward(BaseRewardSpace):
 
                     if key.startswith('diagonal'):
                         if count >= 4:
-                            r = 1.
+                            self.game_win_type = self.win_type[key]
+                            r.append(1.)
                             done = True
                         elif count == 3:
-                            r = .5
+                            r.append(.5)
                         elif count == 2:
-                            r = 1/42
-                        else:
-                            r = 0
+                            r.append(1/42)
                     else:
                         if count >= 4:
-                            r = -1.
+                            self.game_win_type = self.win_type[key]
+                            r.append(-1.)
                             done = True
                         elif count == 3:
-                            r = -.3
+                            r.append(-.3)
                         elif count == 2:
-                            r = 1/42
-                        else:
-                            r = 0
-                    reward = max(r, reward)
+                            r.append(1/42)
+
+        reward = max(r, key=lambda x: abs(x))
 
         return reward, done
+
+    def get_info(self) -> Dict[str, np.ndarray]:
+        win_type = np.array(self.game_win_type, dtype=np.int8)
+        return dict(win_type=win_type)
 
 class MoreInARowReward(BaseRewardSpace):
     @staticmethod

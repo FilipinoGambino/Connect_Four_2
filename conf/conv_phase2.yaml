@@ -45,7 +45,7 @@ reward_space: DiagonalEmphasisReward
 ## OPTIMIZER params
 optimizer_class: Adam
 optimizer_kwargs:
-  lr: 1e-5
+  lr: 5e-5
   # See https://arxiv.org/pdf/2105.05246.pdf
   eps: 0.0003
   # alpha: 0.9
@@ -61,8 +61,8 @@ reduction: mean
 
 # Pretrained model for KL loss
 use_teacher: true
-teacher_load_dir: outputs/03-12/14-39-05
-teacher_checkpoint_file: 500224_weights.pt
+teacher_load_dir: outputs/03-13/21-43-05
+teacher_checkpoint_file: 1000448_weights.pt
 
 # MISCELLANEOUS params
 actor_device: cpu
