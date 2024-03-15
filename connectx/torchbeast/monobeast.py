@@ -244,9 +244,9 @@ def get_batch(
         timings.time("lock")
         indices = [full_queue.get() for _ in range(max(flags.batch_size // flags.n_actor_envs, 1))]
         timings.time("dequeue")
-    batch = stack_buffers([buffers[m] for m in indices], dim=1)
+    batch = [stack_buffers([buffers[agent][m] for m in indices], dim=1) for agent in range(2)]
     timings.time("batch")
-    batch = buffers_apply(batch, lambda x: x.to(device=flags.learner_device, non_blocking=True))
+    batch = [buffers_apply(batch[agent], lambda x: x.to(device=flags.learner_device, non_blocking=True)), ]
     timings.time("device")
     for m in indices:
         free_queue.put(m)

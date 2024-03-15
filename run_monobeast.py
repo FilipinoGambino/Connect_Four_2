@@ -101,7 +101,7 @@ def main(flags: DictConfig):
 
 
 if __name__ == "__main__":
-    # mp.set_start_method("spawn")
+    mp.set_start_method("spawn")
     try:
         wandb.login(key=WANDB_API_KEY)
     except NameError:
