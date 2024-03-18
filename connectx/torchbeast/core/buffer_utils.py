@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 
 from ...connectx_gym.obs_spaces import BaseObsSpace
 
-Buffers = List[Dict[str, Union[Dict, torch.Tensor]]]
+Buffers = Dict[str, List[Dict[str, Union[Dict, torch.Tensor]]]]
 
 
 def fill_buffers_inplace(buffers: Union[Dict, torch.Tensor], fill_vals: Union[Dict, torch.Tensor], step: int):
@@ -114,9 +114,10 @@ def create_buffers(
         actions=dict(size=(t + 1, n, 1), dtype=torch.int64),
     )
 
-    buffers: Buffers = []
-    for _ in range(flags.num_buffers):
-        new_buffer = _create_buffers_from_specs(specs)
-        new_buffer["info"] = _create_buffers_like(example_info, t + 1)
-        buffers.append(new_buffer)
+    buffers: Buffers = dict()
+    for idx in range(p):
+        for _ in range(flags.num_buffers):
+            new_buffer = _create_buffers_from_specs(specs)
+            new_buffer["info"] = _create_buffers_like(example_info, t + 1)
+            buffers[f"actor_{idx+1}"].append(new_buffer)
     return buffers

@@ -64,14 +64,13 @@ def get_default_flags(flags: DictConfig) -> DictConfig:
     return OmegaConf.create(flags)
 
 
-@hydra.main(config_path="conf", config_name="conv_phase2", version_base=None)
+@hydra.main(config_path="conf", config_name="conv_phase1", version_base=None)
 def main(flags: DictConfig):
     cli_conf = OmegaConf.from_cli()
-    #TODO add this back?\/
 
-    # if Path("config.yaml").exists():
-    #     new_flags = OmegaConf.load("config.yaml")
-    #     flags = OmegaConf.merge(new_flags, cli_conf)
+    if Path("config.yaml").exists():
+        new_flags = OmegaConf.load("config.yaml")
+        flags = OmegaConf.merge(new_flags, cli_conf)
 
     if flags.get("load_dir", None) and not flags.get("weights_only", False):
         # this ignores the local config.yaml and replaces it completely with saved one
