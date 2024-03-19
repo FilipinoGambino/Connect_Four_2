@@ -6,7 +6,10 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 
 from ...connectx_gym.obs_spaces import BaseObsSpace
 
-Buffers = Dict[str, List[Dict[str, Union[Dict, torch.Tensor]]]]
+import logging
+
+
+Buffers = List[Dict[str, Union[Dict, torch.Tensor]]]
 
 
 def fill_buffers_inplace(buffers: Union[Dict, torch.Tensor], fill_vals: Union[Dict, torch.Tensor], step: int):
@@ -89,7 +92,6 @@ def create_buffers(
 ) -> Buffers:
     t = flags.unroll_length
     n = flags.n_actor_envs
-    p = 2
 
     obs_specs = {}
     for key, spec in obs_space.get_obs_spec().spaces.items():
@@ -101,23 +103,22 @@ def create_buffers(
             dtype = torch.float32
         else:
             raise NotImplementedError(f"{type(spec)} is not an accepted observation space.")
-        obs_specs[key] = dict(size=(t + 1, n, *spec.shape), dtype=dtype)
+        obs_specs[key] = dict(size=(t, n, *spec.shape), dtype=dtype)
 
     act_space = flags.act_space()
     n_actions = act_space.get_action_space().n
     specs = dict(
         obs=obs_specs,
-        reward=dict(size=(t + 1, n, 1), dtype=torch.float32),
-        done=dict(size=(t + 1, n), dtype=torch.bool),
-        policy_logits=dict(size=(t + 1, n, n_actions), dtype=torch.float32),
-        baseline=dict(size=(t + 1, n, 1), dtype=torch.float32),
-        actions=dict(size=(t + 1, n, 1), dtype=torch.int64),
+        reward=dict(size=(t, n, 1), dtype=torch.float32),
+        done=dict(size=(t, n), dtype=torch.bool),
+        policy_logits=dict(size=(t, n, n_actions), dtype=torch.float32),
+        baseline=dict(size=(t, n, 1), dtype=torch.float32),
+        actions=dict(size=(t, n, 1), dtype=torch.int64),
     )
+    buffers: Buffers = []
+    for _ in range(flags.num_buffers):
+        new_buffer = _create_buffers_from_specs(specs)
+        new_buffer["info"] = _create_buffers_like(example_info, t)
+        buffers.append(new_buffer)
 
-    buffers: Buffers = dict()
-    for idx in range(p):
-        for _ in range(flags.num_buffers):
-            new_buffer = _create_buffers_from_specs(specs)
-            new_buffer["info"] = _create_buffers_like(example_info, t + 1)
-            buffers[f"actor_{idx+1}"].append(new_buffer)
     return buffers

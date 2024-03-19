@@ -19,12 +19,6 @@ AGENT = None
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 class RLAgent:
     def __init__(self, player_id):

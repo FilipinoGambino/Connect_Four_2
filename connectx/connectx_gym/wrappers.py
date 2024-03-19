@@ -8,12 +8,6 @@ from typing import Dict, List, Union, Tuple
 from .reward_spaces import BaseRewardSpace
 
 import logging
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 
 class LoggingEnv(gym.Wrapper):
@@ -21,20 +15,19 @@ class LoggingEnv(gym.Wrapper):
         super(LoggingEnv, self).__init__(env)
         self.reward_space = reward_space
         self.vals_peak = {}
+        # self.winners = [0, 0]
         self.reward_sum = [0., 0.]
-        self.sum_reward = [0.]
 
     def info(self, info: Dict[str, np.ndarray], reward: int) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
         step = self.env.unwrapped.turn
         logs = dict(step=step)
 
-        self.sum_reward[0] += reward
-        logs['all_rewards'] = self.sum_reward
+        # self.winners[(step-1) % 2] += reward
+        # logs['winner'] = self.winners
         self.reward_sum[(step-1) % 2] += reward
         logs["p1_rewards"] = [self.reward_sum[0]]
         logs["p2_rewards"] = [self.reward_sum[1]]
-
 
         info.update({f"LOGGING_{key}": np.array(val, dtype=np.float32) for key, val in logs.items()})
         # Add any additional info from the reward space
@@ -43,7 +36,6 @@ class LoggingEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
-        self.sum_reward = [0.]
         self.reward_sum = [0., 0.]
         return obs, [reward], done, self.info(info, reward)
 

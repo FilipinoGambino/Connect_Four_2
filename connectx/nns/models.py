@@ -11,12 +11,6 @@ from ..connectx_gym.reward_spaces import RewardSpec
 from ..utility_constants import BOARD_SIZE, IN_A_ROW
 import logging
 
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 class DictActor(nn.Module):
     def __init__(

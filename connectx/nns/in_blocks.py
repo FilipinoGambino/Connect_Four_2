@@ -9,12 +9,6 @@ from ..utility_constants import BOARD_SIZE
 
 import logging
 
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 class DictInputLayer(nn.Module):
     @staticmethod
@@ -73,15 +67,18 @@ class ConvEmbeddingInputLayer(nn.Module):
         emb_outs = dict()
 
         for key,op in self.keys_to_op.items():
-            in_tensor = x[key]
-            if op == "embedding":
-                # logging.info(f"{key}: {self.embeddings[key]} {in_tensor}")
-                out = self.embeddings[key](in_tensor)
-                emb_outs[key] = out.permute([0,3,1,2])
-            elif op == "continuous":
-                cont_outs.append(in_tensor)
-            else:
-                raise RuntimeError(f"Unknown operation: {op}")
+            try:
+                in_tensor = x[key]
+                if op == "embedding":
+                    # logging.info(f"{key}: {self.embeddings[key]} {in_tensor}")
+                    out = self.embeddings[key](in_tensor)
+                    emb_outs[key] = out.permute([0,3,1,2])
+                elif op == "continuous":
+                    cont_outs.append(in_tensor)
+                else:
+                    raise RuntimeError(f"Unknown operation: {op}")
+            except IndexError:
+                raise IndexError(f"{key} with shape {x[key].shape}\n{x[key]}")
 
         cont_outs = torch.cat(cont_outs, dim=0).unsqueeze(-1)
 

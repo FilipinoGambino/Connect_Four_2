@@ -1,4 +1,3 @@
-import logging
 import numpy as np
 import pandas as pd
 import torch
@@ -8,13 +7,6 @@ from typing import Dict, Tuple
 # pd.set_option('display.max_columns', None)
 
 from connectx.nns import create_model
-
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 
 class ConnectFourDataset(Dataset):

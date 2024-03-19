@@ -13,6 +13,7 @@
 # limitations under the License.
 import random
 from collections import deque
+import itertools
 import logging
 import math
 from omegaconf import OmegaConf
@@ -48,30 +49,48 @@ logging.basicConfig(
     format=(
         "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
     ),
-    level=0,
+    level=logging.NOTSET,
 )
 
 class Learner:
-    def __init__(self, _id, flags):
-        self._id = _id
+    i = itertools.count()
+    def __init__(self, flags):
+        self.id_ = next(Learner.i)
         self.flags = flags
-        self.actor_model = self.get_actor_model()
-        self.leaner_model = self.get_learner_model()
-        self.teacher_model = self.get_teacher_model()
-        self.buffers = self.get_buffers()
-        self.optimizer = None
-        self.grad_scaler = None
-        self.scheduler = self.get_scheduler()
         self.teacher_flags = None
         self.checkpoint_state = None
+        self.buffers = None
+        self.actor_model = None
+        self.learner_model = None
+        self.teacher_model = None
+        self.optimizer = None
+        self.grad_scaler = None
+        self.lr_scheduler = None
+        self.checkpoint_step = 0
+        self.checkpoint_total_games_played = 0
 
-    def get_actor_model(self):
+        self.get_teacher_flags()
+        self.get_checkpoint_state()
+        self.get_buffers()
+        self.get_actor_model()
+        self.get_learner_model()
+        self.get_teacher_model()
+        self.get_scheduler()
+
+    def get_checkpoint_state(self):
         if self.flags.load_dir:
-            self.checkpoint_state = torch.load(
+            logging.info(f"Agent {self.id_} is loading checkpoint state")
+            checkpoint_state = torch.load(
                 Path(self.flags.load_dir) / self.flags.checkpoint_file,
                 map_location=torch.device("cpu")
             )
+            if "step" in checkpoint_state.keys():
+                self.checkpoint_step = checkpoint_state["step"]
+            if "total_games_played" in self.checkpoint_state.keys():
+                self.checkpoint_total_games_played = checkpoint_state["total_games_played"]
+            self.checkpoint_state = checkpoint_state
 
+    def get_actor_model(self):
         actor_model = create_model(
             self.flags,
             self.flags.actor_device,
@@ -87,7 +106,7 @@ class Learner:
         n_trainable_params = sum(p.numel() for p in actor_model.parameters() if p.requires_grad)
         logging.info(f'Training model with {n_trainable_params:,d} parameters.')
 
-        return actor_model
+        self.actor_model = actor_model
 
     def get_learner_model(self):
         learner_model = create_model(
@@ -103,14 +122,15 @@ class Learner:
         if not self.flags.disable_wandb:
             wandb.watch(learner_model, self.flags.model_log_freq, log="all", log_graph=True)
 
-        self.optimizer = self.flags.optimizer_class(
+        optimizer = self.flags.optimizer_class(
             learner_model.parameters(),
             **self.flags.optimizer_kwargs
         )
         if self.checkpoint_state is not None and not self.flags.weights_only:
-            self.optimizer.load_state_dict(self.checkpoint_state["optimizer_state_dict"])
+            optimizer.load_state_dict(self.checkpoint_state["optimizer_state_dict"])
 
-        return learner_model
+        self.learner_model = learner_model
+        self.optimizer = optimizer
 
     def get_teacher_model(self):
         # Load teacher model for KL loss
@@ -142,23 +162,27 @@ class Learner:
                     f"Setting flags.teacher_baseline_cost to 0.")
             self.flags.teacher_kl_cost = 0.
             self.flags.teacher_baseline_cost = 0.
-        return teacher_model
+
+        self.teacher_model = teacher_model
 
     def get_buffers(self):
-        if self.flags.use_teacher:
-            teacher_flags = OmegaConf.load(Path(self.flags.teacher_load_dir) / "config.yaml")
-            self.teacher_flags = flags_to_namespace(OmegaConf.to_container(teacher_flags))
-
         example_env = create_env(self.flags, torch.device("cpu"), teacher_flags=self.teacher_flags)
-        buffers = create_buffers(
+        self.buffers = create_buffers(
             self.flags,
             example_env.unwrapped[0].obs_space,
             example_env.reset(force=True)["info"]
         )
-        return buffers
+
+    def get_teacher_flags(self):
+        if self.flags.use_teacher:
+            logging.info(f"Agent {self.id_} is using a teacher")
+            teacher_flags = OmegaConf.load(Path(self.flags.teacher_load_dir) / "config.yaml")
+            self.teacher_flags = flags_to_namespace(OmegaConf.to_container(teacher_flags))
 
     def get_scheduler(self):
         def lr_lambda(epoch):
+            t = self.flags.unroll_length
+            b = self.flags.batch_size
             min_pct = self.flags.min_lr_mod
             pct_complete = min(epoch * t * b, self.flags.total_steps) / self.flags.total_steps
             scaled_pct_complete = pct_complete * (1. - min_pct)
@@ -168,25 +192,25 @@ class Learner:
         scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
         if self.checkpoint_state is not None and not self.flags.weights_only:
             scheduler.load_state_dict(self.checkpoint_state["scheduler_state_dict"])
-        return scheduler
+        self.lr_scheduler = scheduler
 
     def checkpoint(self, checkpoint_path: Union[str, Path], step, total_games_played):
-        logging.info(f"Saving checkpoint to {checkpoint_path}")
+        logging.info(f"Saving checkpoint to {checkpoint_path}_player_{self.id_}")
         torch.save(
             {
                 "model_state_dict": self.actor_model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
-                "scheduler_state_dict": self.scheduler.state_dict(),
+                "scheduler_state_dict": self.lr_scheduler.state_dict(),
                 "step": step,
                 "total_games_played": total_games_played,
             },
-            checkpoint_path + ".pt",
+            checkpoint_path + f"_player_{self.id_}.pt",
         )
         torch.save(
             {
                 "model_state_dict": self.actor_model.state_dict(),
             },
-            checkpoint_path + "_weights.pt"
+            checkpoint_path + f"_weights_player_{self.id_}.pt"
         )
         # model_artifact = wandb.Artifact('model', type='model')
         # weights_artifact = wandb.Artifact('weights', type='weights')
@@ -330,48 +354,44 @@ def act(
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
         env_output = env.reset(force=True)
 
-        if random.uniform(0., 1.) > .5:
-            learners = learners.reverse()
-
-        learner = learners.popleft()
-        learners.append(learner)
-        agent_output = learner.actor_model.sample_actions(env_output)
+        # if random.uniform(0., 1.) > .5:
+        #     learners.reverse()
 
         while True:
             index = free_queue.get()
             if index is None:
                 break
-            fill_buffers_inplace(learner.buffers[index], dict(**env_output, **agent_output), 0)
 
             # Do new rollout.
             for t in range(flags.unroll_length):
-                timings.reset()
-                learner = learners.popleft()
-                learners.append(learner)
-                agent_output = learner.actor_model.sample_actions(env_output)
+                for _ in range(len(learners)):
+                    timings.reset()
+                    learner = learners.popleft()
+                    learners.append(learner)
+                    agent_output = learner.actor_model.sample_actions(env_output)
 
-                timings.time("model")
+                    timings.time("model")
 
-                env_output = env.step(agent_output["actions"])
-                if env_output["done"].any():
+                    env_output = env.step(agent_output["actions"])
+                    if env_output["done"].any():
 
-                    # Cache reward, done, and info from the terminal step
-                    cached_reward = env_output["reward"]
-                    cached_done = env_output["done"]
+                        # Cache reward, done, and info from the terminal step
+                        cached_reward = env_output["reward"]
+                        cached_done = env_output["done"]
 
-                    cached_info_logging = {
-                        key: val for key, val in env_output["info"].items() if key.startswith("LOGGING_")
-                    }
+                        cached_info_logging = {
+                            key: val for key, val in env_output["info"].items() if key.startswith("LOGGING_")
+                        }
 
-                    env_output = env.reset()
-                    env_output["reward"] = cached_reward
-                    env_output["done"] = cached_done
+                        env_output = env.reset()
+                        env_output["reward"] = cached_reward
+                        env_output["done"] = cached_done
 
-                    env_output["info"].update(cached_info_logging)
+                        env_output["info"].update(cached_info_logging)
 
-                timings.time("step")
-                fill_buffers_inplace(learner.buffers[index], dict(**env_output, **agent_output), t + 1)
-                timings.time("write")
+                    timings.time("step")
+                    fill_buffers_inplace(learner.buffers[index], dict(**env_output, **agent_output), t)
+                    timings.time("write")
             full_queue.put(index)
 
         if actor_index == 0:
@@ -407,16 +427,10 @@ def get_batch(
     timings.time("enqueue")
     return batch
 
-
 def learn(
         flags: SimpleNamespace,
-        actor_model: nn.Module,
-        learner_model: nn.Module,
-        teacher_model: Optional[nn.Module],
+        learner: Learner,
         batch: Dict[str, torch.Tensor],
-        optimizer: torch.optim.Optimizer,
-        grad_scaler: amp.grad_scaler,
-        lr_scheduler: torch.optim.lr_scheduler,
         total_games_played: int,
         baseline_only: bool = False,
         lock=threading.Lock(),
@@ -426,27 +440,28 @@ def learn(
         try:
             with amp.autocast(enabled=flags.use_mixed_precision):
                 flattened_batch = buffers_apply(batch, lambda x: torch.flatten(x, start_dim=0, end_dim=1))
-                learner_outputs = learner_model(flattened_batch)
-                learner_outputs = buffers_apply(learner_outputs, lambda x: x.view(flags.unroll_length + 1,
+                learner_outputs = learner.learner_model(flattened_batch)
+
+                learner_outputs = buffers_apply(learner_outputs, lambda x: x.view(flags.unroll_length,
                                                                                   flags.batch_size,
                                                                                   *x.shape[1:]))
 
                 if flags.use_teacher:
                     with torch.no_grad():
-                        teacher_outputs = teacher_model(flattened_batch)
-                        teacher_outputs = buffers_apply(teacher_outputs, lambda x: x.view(flags.unroll_length + 1,
+                        teacher_outputs = learner.teacher_model(flattened_batch)
+                        teacher_outputs = buffers_apply(teacher_outputs, lambda x: x.view(flags.unroll_length,
                                                                                           flags.batch_size,
                                                                                           *x.shape[1:]))
                 else:
                     teacher_outputs = None
                 # Take final value function slice for bootstrapping.
                 bootstrap_value = learner_outputs["baseline"][-1]
-
                 # Move from obs[t] -> action[t] to action[t] -> obs[t].
-                batch = buffers_apply(batch, lambda x: x[1:])
-                learner_outputs = buffers_apply(learner_outputs, lambda x: x[:-1])
-                if flags.use_teacher:
-                    teacher_outputs = buffers_apply(teacher_outputs, lambda x: x[:-1])
+                # batch = buffers_apply(batch, lambda x: x[1:])
+                # learner_outputs = buffers_apply(learner_outputs, lambda x: x[:-1])
+
+                # if flags.use_teacher:
+                #     teacher_outputs = buffers_apply(teacher_outputs, lambda x: x[:-1])
 
                 combined_behavior_action_log_probs = torch.zeros(
                     (flags.unroll_length, flags.batch_size, 1),
@@ -459,6 +474,7 @@ def learn(
                 actions = batch["actions"]
 
                 behavior_policy_logits = batch["policy_logits"]
+
                 behavior_action_log_probs = combine_policy_logits_to_log_probs(
                     behavior_policy_logits,
                     actions,
@@ -467,6 +483,7 @@ def learn(
                 combined_behavior_action_log_probs = combined_behavior_action_log_probs + behavior_action_log_probs
 
                 learner_policy_logits = learner_outputs["policy_logits"]
+
                 learner_action_log_probs = combine_policy_logits_to_log_probs(
                     learner_policy_logits,
                     actions,
@@ -500,6 +517,7 @@ def learn(
                     learner_policy_entropy,
                     reduction="sum"
                 )).detach().cpu().item()
+
             discounts = (~batch["done"]).float() * flags.discounting
             discounts = discounts.unsqueeze(-1).expand_as(combined_behavior_action_log_probs)
             values = learner_outputs["baseline"]
@@ -573,7 +591,7 @@ def learn(
                               teacher_baseline_loss +
                               entropy_loss)
 
-            last_lr = lr_scheduler.get_last_lr()
+            last_lr = learner.lr_scheduler.get_last_lr()
             assert len(last_lr) == 1, 'Logging per-parameter LR still needs support'
             last_lr = last_lr[0]
 
@@ -607,26 +625,26 @@ def learn(
                 },
             }
 
-            optimizer.zero_grad()
+            learner.optimizer.zero_grad()
             if flags.use_mixed_precision:
-                grad_scaler.scale(total_loss).backward()
+                learner.grad_scaler.scale(total_loss).backward()
                 if flags.clip_grads is not None:
-                    grad_scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(learner_model.parameters(), flags.clip_grads)
-                grad_scaler.step(optimizer)
-                grad_scaler.update()
+                    learner.grad_scaler.unscale_(learner.optimizer)
+                    torch.nn.utils.clip_grad_norm_(learner.learner_model.parameters(), flags.clip_grads)
+                learner.grad_scaler.step(learner.optimizer)
+                learner.grad_scaler.update()
             else:
                 total_loss.backward()
                 if flags.clip_grads is not None:
-                    torch.nn.utils.clip_grad_norm_(learner_model.parameters(), flags.clip_grads)
-                optimizer.step()
-            if lr_scheduler is not None:
+                    torch.nn.utils.clip_grad_norm_(learner.learner_model.parameters(), flags.clip_grads)
+                learner.optimizer.step()
+            if learner.lr_scheduler is not None:
                 with warnings.catch_warnings():
                     warnings.filterwarnings('ignore', category=UserWarning)
-                    lr_scheduler.step()
+                    learner.lr_scheduler.step()
 
             # noinspection PyTypeChecker
-            actor_model.load_state_dict(learner_model.state_dict())
+            learner.actor_model.load_state_dict(learner.learner_model.state_dict())
             return stats, total_games_played
         except Exception as e:
             logging.info(f"{e}")
@@ -643,7 +661,10 @@ def train(flags):
     t = flags.unroll_length
     b = flags.batch_size
 
-    learners = [Learner(_id=0, flags=flags), Learner(_id=1, flags=flags)]
+    learners = deque([
+        Learner(flags=flags),
+        Learner(flags=flags)
+    ], maxlen=2)
 
     actor_processes = []
     free_queue = mp.SimpleQueue()
@@ -655,7 +676,7 @@ def train(flags):
             target=act,
             args=(
                 flags,
-                learners[0].teacher_flags,
+                learners[0].teacher_flags, # Using the same teacher flags, but not the same teachers
                 i,
                 free_queue,
                 full_queue,
@@ -667,15 +688,13 @@ def train(flags):
         time.sleep(0.5)
 
     step, total_games_played, stats = 0, 0, {}
-    if checkpoint_state is not None and not flags.weights_only:
-        if "step" in checkpoint_state.keys():
-            step = checkpoint_state["step"]
-        # Backwards compatibility
+    if all([learner.checkpoint_state for learner in learners]) and not flags.weights_only:
+        if len(set([learner.checkpoint_step for learner in learners]))==1:
+            step = learners[0].checkpoint_step
         else:
             logging.warning("Loading old checkpoint_state without 'step' saved. Starting at step 0.")
-        if "total_games_played" in checkpoint_state.keys():
-            total_games_played = checkpoint_state["total_games_played"]
-        # Backwards compatibility
+        if len(set([learner.checkpoint_total_games_played for learner in learners]))==1:
+            total_games_played = learners[0].checkpoint_total_games_played
         else:
             logging.warning("Loading old checkpoint_state without 'total_games_played' saved. Starting at step 0.")
 
@@ -684,36 +703,35 @@ def train(flags):
         nonlocal step, total_games_played, stats
         timings = prof.Timings()
         while step < flags.total_steps:
-            timings.reset()
-            full_batch = get_batch(
-                flags,
-                free_queue,
-                full_queue,
-                buffers,
-                timings,
-            )
-            if flags.batch_size < flags.n_actor_envs:
-                batches = split_buffers(full_batch, flags.batch_size, dim=1, contiguous=True)
-            else:
-                batches = [full_batch]
-            for batch in batches:
-                stats, total_games_played = learn(
-                    flags=flags,
-                    actor_model=actor_model,
-                    learner_model=learner_model,
-                    teacher_model=teacher_model,
-                    batch=batch,
-                    optimizer=optimizer,
-                    grad_scaler=grad_scaler,
-                    lr_scheduler=scheduler,
-                    total_games_played=total_games_played,
-                    baseline_only=step / (t * b) < flags.n_value_warmup_batches,
+            _step = step
+            for learner in learners:
+                timings.reset()
+                learner_step = _step
+                full_batch = get_batch(
+                    flags,
+                    free_queue,
+                    full_queue,
+                    learner.buffers,
+                    timings,
                 )
-                with lock:
-                    step += t * b
-                    if not flags.disable_wandb:
-                        wandb.log(stats, step=step)
-            timings.time("learn")
+                if flags.batch_size < flags.n_actor_envs:
+                    batches = split_buffers(full_batch, flags.batch_size, dim=1, contiguous=True)
+                else:
+                    batches = [full_batch]
+                for batch in batches:
+                    stats, total_games_played = learn(
+                        flags=flags,
+                        learner=learner,
+                        batch=batch,
+                        total_games_played=total_games_played,
+                        baseline_only=learner_step / (t * b) < flags.n_value_warmup_batches,
+                    )
+                    with lock:
+                        learner_step += t * b
+                        if not flags.disable_wandb:
+                            wandb.log(stats, step=learner_step, id=learner.id_)
+                timings.time("learn")
+            step = learner_step
         if learner_idx == 0:
             logging.info(f"Batch and learn timing statistics: {timings.summary()}")
 
@@ -742,7 +760,8 @@ def train(flags):
             # Save every checkpoint_freq minutes
             if timer() - last_checkpoint_time > flags.checkpoint_freq * 60:
                 cp_path = str(step).zfill(int(math.log10(flags.total_steps)) + 1)
-                checkpoint(cp_path)
+                for learner in learners:
+                    learner.checkpoint(cp_path, step, total_games_played)
                 last_checkpoint_time = timer()
 
             sps = (step - start_step) / (timer() - start_time)
@@ -761,4 +780,5 @@ def train(flags):
         for actor in actor_processes:
             actor.join(timeout=1)
         cp_path = str(step).zfill(int(math.log10(flags.total_steps)) + 1)
-        checkpoint(cp_path)
+        for learner in learners:
+            learner.checkpoint(cp_path, step, total_games_played)

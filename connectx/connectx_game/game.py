@@ -5,12 +5,6 @@ import logging
 from ..connectx_game.game_objects import Player
 from ..utility_constants import BOARD_SIZE, IN_A_ROW, VICTORY_KERNELS, GAME_STATUS
 
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 class Game:
     def __init__(self):

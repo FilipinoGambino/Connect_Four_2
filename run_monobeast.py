@@ -26,8 +26,9 @@ logging.basicConfig(
     format=(
         "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
     ),
-    level=0,
+    level=logging.NOTSET,
 )
+
 
 
 def get_default_flags(flags: DictConfig) -> DictConfig:
