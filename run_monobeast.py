@@ -30,7 +30,6 @@ logging.basicConfig(
 )
 
 
-
 def get_default_flags(flags: DictConfig) -> DictConfig:
     flags = OmegaConf.to_container(flags)
     # Env params

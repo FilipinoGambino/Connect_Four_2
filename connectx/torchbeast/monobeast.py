@@ -60,6 +60,7 @@ class Learner:
         self.teacher_flags = None
         self.checkpoint_state = None
         self.buffers = None
+        self.full_batch = None
         self.actor_model = None
         self.learner_model = None
         self.teacher_model = None
@@ -340,7 +341,7 @@ def act(
         actor_index: int,
         free_queue: mp.SimpleQueue,
         full_queue: mp.SimpleQueue,
-        learners: deque[Learner, Learner],
+        learners: List[Learner],
 ):
     if flags.debug:
         catch_me = AssertionError
@@ -349,13 +350,12 @@ def act(
     try:
         logging.info(f"Actor {actor_index} started.")
 
+        queue = deque([i for i in range(len(learners))])
+
         timings = prof.Timings()
 
         env = create_env(flags, device=flags.actor_device, teacher_flags=teacher_flags)
         env_output = env.reset(force=True)
-
-        # if random.uniform(0., 1.) > .5:
-        #     learners.reverse()
 
         while True:
             index = free_queue.get()
@@ -366,9 +366,9 @@ def act(
             for t in range(flags.unroll_length):
                 for _ in range(len(learners)):
                     timings.reset()
-                    learner = learners.popleft()
-                    learners.append(learner)
-                    agent_output = learner.actor_model.sample_actions(env_output)
+                    i = queue.popleft()
+                    queue.append(i)
+                    agent_output = learners[i].actor_model.sample_actions(env_output)
 
                     timings.time("model")
 
@@ -390,7 +390,7 @@ def act(
                         env_output["info"].update(cached_info_logging)
 
                     timings.time("step")
-                    fill_buffers_inplace(learner.buffers[index], dict(**env_output, **agent_output), t)
+                    fill_buffers_inplace(learners[i].buffers[index], dict(**env_output, **agent_output), t)
                     timings.time("write")
             full_queue.put(index)
 
@@ -406,11 +406,11 @@ def act(
         raise e
 
 
-def get_batch(
+def load_batches(
     flags: SimpleNamespace,
     free_queue: mp.SimpleQueue,
     full_queue: mp.SimpleQueue,
-    buffers: Buffers,
+    learners: List[Learner],
     timings: prof.Timings,
     lock=threading.Lock(),
 ):
@@ -418,14 +418,16 @@ def get_batch(
         timings.time("lock")
         indices = [full_queue.get() for _ in range(max(flags.batch_size // flags.n_actor_envs, 1))]
         timings.time("dequeue")
-    batch = stack_buffers([buffers[m] for m in indices], dim=1)
+
+    for learner in learners:
+        learner.full_batch = stack_buffers([learner.buffers[m] for m in indices], dim=1)
     timings.time("batch")
-    batch = buffers_apply(batch, lambda x: x.to(device=flags.learner_device, non_blocking=True))
+    for learner in learners:
+        learner.full_batch = buffers_apply(learner.full_batch, lambda x: x.to(device=flags.learner_device, non_blocking=True))
     timings.time("device")
     for m in indices:
         free_queue.put(m)
     timings.time("enqueue")
-    return batch
 
 def learn(
         flags: SimpleNamespace,
@@ -440,6 +442,7 @@ def learn(
         try:
             with amp.autocast(enabled=flags.use_mixed_precision):
                 flattened_batch = buffers_apply(batch, lambda x: torch.flatten(x, start_dim=0, end_dim=1))
+                logging.info(batch)
                 learner_outputs = learner.learner_model(flattened_batch)
 
                 learner_outputs = buffers_apply(learner_outputs, lambda x: x.view(flags.unroll_length,
@@ -661,10 +664,7 @@ def train(flags):
     t = flags.unroll_length
     b = flags.batch_size
 
-    learners = deque([
-        Learner(flags=flags),
-        Learner(flags=flags)
-    ], maxlen=2)
+    learners = [Learner(flags=flags), Learner(flags=flags)]
 
     actor_processes = []
     free_queue = mp.SimpleQueue()
@@ -703,21 +703,20 @@ def train(flags):
         nonlocal step, total_games_played, stats
         timings = prof.Timings()
         while step < flags.total_steps:
-            _step = step
+            timings.reset()
+            load_batches(
+                flags,
+                free_queue,
+                full_queue,
+                learners,
+                timings,
+            )
             for learner in learners:
-                timings.reset()
-                learner_step = _step
-                full_batch = get_batch(
-                    flags,
-                    free_queue,
-                    full_queue,
-                    learner.buffers,
-                    timings,
-                )
+                learner_step = step
                 if flags.batch_size < flags.n_actor_envs:
-                    batches = split_buffers(full_batch, flags.batch_size, dim=1, contiguous=True)
+                    batches = split_buffers(learner.full_batch, flags.batch_size, dim=1, contiguous=True)
                 else:
-                    batches = [full_batch]
+                    batches = [learner.full_batch]
                 for batch in batches:
                     stats, total_games_played = learn(
                         flags=flags,
@@ -730,7 +729,7 @@ def train(flags):
                         learner_step += t * b
                         if not flags.disable_wandb:
                             wandb.log(stats, step=learner_step, id=learner.id_)
-                timings.time("learn")
+            timings.time("learn")
             step = learner_step
         if learner_idx == 0:
             logging.info(f"Batch and learn timing statistics: {timings.summary()}")

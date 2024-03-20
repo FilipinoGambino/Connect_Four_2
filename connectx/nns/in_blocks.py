@@ -70,7 +70,6 @@ class ConvEmbeddingInputLayer(nn.Module):
             try:
                 in_tensor = x[key]
                 if op == "embedding":
-                    # logging.info(f"{key}: {self.embeddings[key]} {in_tensor}")
                     out = self.embeddings[key](in_tensor)
                     emb_outs[key] = out.permute([0,3,1,2])
                 elif op == "continuous":

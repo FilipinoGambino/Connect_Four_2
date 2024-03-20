@@ -51,6 +51,7 @@ class DictActor(nn.Module):
             torch.full_like(logits, fill_value=float("-inf")),
             torch.zeros_like(logits)
         )
+
         actions = DictActor.logits_to_actions(logits, sample)
 
         return logits, actions
@@ -60,7 +61,12 @@ class DictActor(nn.Module):
     def logits_to_actions(logits: torch.Tensor, sample: bool) -> torch.Tensor:
         if sample:
             probs = F.softmax(logits, dim=-1)
-            return torch.multinomial(probs, num_samples=1, replacement=False)
+            try:
+                return torch.multinomial(probs, num_samples=1, replacement=False)
+            except Exception:
+                logging.info(f"logits\n{logits}")
+                logging.info(f"probs\n{probs}")
+                raise RuntimeError
         else:
             return torch.argmax(logits, dim=-1).unsqueeze(dim=-1)
 
