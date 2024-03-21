@@ -45,12 +45,14 @@ from ..utils import flags_to_namespace
 from contextlib import contextmanager
 
 KL_DIV_LOSS = nn.KLDivLoss(reduction="none")
+
 logging.basicConfig(
     format=(
         "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
     ),
     level=logging.NOTSET,
 )
+logging.info('test')
 
 class Learner:
     i = itertools.count()
@@ -59,7 +61,7 @@ class Learner:
         self.flags = flags
         self.teacher_flags = None
         self.checkpoint_state = None
-        self.buffers = None
+        self.buffers: Buffers = None
         self.full_batch = None
         self.actor_model = None
         self.learner_model = None
@@ -70,15 +72,15 @@ class Learner:
         self.checkpoint_step = 0
         self.checkpoint_total_games_played = 0
 
-        self.get_teacher_flags()
-        self.get_checkpoint_state()
-        self.get_buffers()
-        self.get_actor_model()
-        self.get_learner_model()
-        self.get_teacher_model()
-        self.get_scheduler()
+        self.load_teacher_flags()
+        self.load_checkpoint_state()
+        self.load_buffers()
+        self.load_actor_model()
+        self.load_learner_model()
+        self.load_teacher_model()
+        self.load_scheduler()
 
-    def get_checkpoint_state(self):
+    def load_checkpoint_state(self):
         if self.flags.load_dir:
             logging.info(f"Agent {self.id_} is loading checkpoint state")
             checkpoint_state = torch.load(
@@ -91,7 +93,7 @@ class Learner:
                 self.checkpoint_total_games_played = checkpoint_state["total_games_played"]
             self.checkpoint_state = checkpoint_state
 
-    def get_actor_model(self):
+    def load_actor_model(self):
         actor_model = create_model(
             self.flags,
             self.flags.actor_device,
@@ -109,7 +111,7 @@ class Learner:
 
         self.actor_model = actor_model
 
-    def get_learner_model(self):
+    def load_learner_model(self):
         learner_model = create_model(
             self.flags,
             self.flags.learner_device,
@@ -133,7 +135,7 @@ class Learner:
         self.learner_model = learner_model
         self.optimizer = optimizer
 
-    def get_teacher_model(self):
+    def load_teacher_model(self):
         # Load teacher model for KL loss
         if self.flags.use_teacher:
             if self.flags.teacher_kl_cost <= 0. and self.flags.teacher_baseline_cost <= 0.:
@@ -166,7 +168,7 @@ class Learner:
 
         self.teacher_model = teacher_model
 
-    def get_buffers(self):
+    def load_buffers(self):
         example_env = create_env(self.flags, torch.device("cpu"), teacher_flags=self.teacher_flags)
         self.buffers = create_buffers(
             self.flags,
@@ -174,13 +176,13 @@ class Learner:
             example_env.reset(force=True)["info"]
         )
 
-    def get_teacher_flags(self):
+    def load_teacher_flags(self):
         if self.flags.use_teacher:
             logging.info(f"Agent {self.id_} is using a teacher")
             teacher_flags = OmegaConf.load(Path(self.flags.teacher_load_dir) / "config.yaml")
             self.teacher_flags = flags_to_namespace(OmegaConf.to_container(teacher_flags))
 
-    def get_scheduler(self):
+    def load_scheduler(self):
         def lr_lambda(epoch):
             t = self.flags.unroll_length
             b = self.flags.batch_size
@@ -231,20 +233,23 @@ def acquire_timeout(lock, timeout):
             lock.release()
 
 
-class MyThread(threading.Thread):
-    def __init__(self, target, name, args):
-        super().__init__()
-        self.target = target
-        self.name = name
-        self.args = args
+thread_count = itertools.count()
+def get_thread(base=threading.Thread):
+    class CustomThread(base):
+        def __init__(self, target, name, args):
+            super().__init__()
+            self.thread_n = next(thread_count)
+            self.target = target
+            self.name = name
+            self.args = args
 
-    def run(self):
-        try:
-            print('running thread')
-            self.target(self.args)
-        except Exception as e:
-            print(f'An exception occured in thread "{self.name}":\n{e}')
-            return
+        def run(self):
+            try:
+                self.target(*self.args)
+            except Exception as e:
+                print(f'An exception occured in thread #{self.thread_n} named "{self.name}":\n{e}')
+                raise RuntimeError
+    return CustomThread
 
 
 def combine_policy_logits_to_log_probs(
@@ -368,7 +373,11 @@ def act(
                     timings.reset()
                     i = queue.popleft()
                     queue.append(i)
-                    agent_output = learners[i].actor_model.sample_actions(env_output)
+                    try:
+                        agent_output = learners[i].actor_model.sample_actions(env_output)
+                    except Exception as e:
+                        logging.info(f"Failed on learners[{i}]")
+                        raise RuntimeError
 
                     timings.time("model")
 
@@ -392,6 +401,7 @@ def act(
                     timings.time("step")
                     fill_buffers_inplace(learners[i].buffers[index], dict(**env_output, **agent_output), t)
                     timings.time("write")
+                    logging.info(f"")
             full_queue.put(index)
 
         if actor_index == 0:
@@ -419,15 +429,17 @@ def load_batches(
         indices = [full_queue.get() for _ in range(max(flags.batch_size // flags.n_actor_envs, 1))]
         timings.time("dequeue")
 
+    batches = {}
     for learner in learners:
-        learner.full_batch = stack_buffers([learner.buffers[m] for m in indices], dim=1)
+        batches[learner.id_] = stack_buffers([learner.buffers[m] for m in indices], dim=1)
     timings.time("batch")
-    for learner in learners:
-        learner.full_batch = buffers_apply(learner.full_batch, lambda x: x.to(device=flags.learner_device, non_blocking=True))
+    for id_, batch in batches.items():
+        batches[id_] = buffers_apply(batch, lambda x: x.to(device=flags.learner_device, non_blocking=True))
     timings.time("device")
     for m in indices:
         free_queue.put(m)
     timings.time("enqueue")
+    return batches
 
 def learn(
         flags: SimpleNamespace,
@@ -442,7 +454,7 @@ def learn(
         try:
             with amp.autocast(enabled=flags.use_mixed_precision):
                 flattened_batch = buffers_apply(batch, lambda x: torch.flatten(x, start_dim=0, end_dim=1))
-                logging.info(batch)
+                logging.info(f"----------------------------------------------------------batch")
                 learner_outputs = learner.learner_model(flattened_batch)
 
                 learner_outputs = buffers_apply(learner_outputs, lambda x: x.view(flags.unroll_length,
@@ -648,6 +660,7 @@ def learn(
 
             # noinspection PyTypeChecker
             learner.actor_model.load_state_dict(learner.learner_model.state_dict())
+            logging.info(f"----------------------------------------------------------model updated")
             return stats, total_games_played
         except Exception as e:
             logging.info(f"{e}")
@@ -671,9 +684,10 @@ def train(flags):
     full_queue = mp.SimpleQueue()
 
     for i in range(flags.num_actors):
-        actor_start = threading.Thread if flags.debug else mp.Process
+        actor_start = get_thread(threading.Thread if flags.debug else mp.Process)
         actor = actor_start(
             target=act,
+            name=f"actor-{i}",
             args=(
                 flags,
                 learners[0].teacher_flags, # Using the same teacher flags, but not the same teachers
@@ -704,7 +718,7 @@ def train(flags):
         timings = prof.Timings()
         while step < flags.total_steps:
             timings.reset()
-            load_batches(
+            full_batches = load_batches(
                 flags,
                 free_queue,
                 full_queue,
@@ -714,9 +728,9 @@ def train(flags):
             for learner in learners:
                 learner_step = step
                 if flags.batch_size < flags.n_actor_envs:
-                    batches = split_buffers(learner.full_batch, flags.batch_size, dim=1, contiguous=True)
+                    batches = split_buffers(full_batches[learner.id_], flags.batch_size, dim=1, contiguous=True)
                 else:
-                    batches = [learner.full_batch]
+                    batches = [full_batches[learner.id_]]
                 for batch in batches:
                     stats, total_games_played = learn(
                         flags=flags,
@@ -739,12 +753,12 @@ def train(flags):
 
     learner_threads = []
     for i in range(flags.num_learner_threads):
-        thread = threading.Thread(
-            target=batch_and_learn, name=f"batch-and-learn-{i}", args=(i,)
-        )
+        new_thread = get_thread()
+        thread = new_thread(
+            target=batch_and_learn,
+            name=f"batch-and-learn-{i}",
+            args=(i,))
         thread.start()
-        # thread = MyThread(target=batch_and_learn, name=f"batch-and-learn-{i}", args=(i,))
-        # thread.start()
         learner_threads.append(thread)
 
 

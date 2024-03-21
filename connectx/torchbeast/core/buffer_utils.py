@@ -19,6 +19,7 @@ def fill_buffers_inplace(buffers: Union[Dict, torch.Tensor], fill_vals: Union[Di
     else:
         try:
             buffers[step, ...] = fill_vals[:]
+            logging.info(f"{step}: {fill_vals.shape}")
         except Exception as e:
             print(buffers[step].shape, fill_vals[:].shape, e)
 
