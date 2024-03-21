@@ -373,11 +373,11 @@ def act(
                     timings.reset()
                     i = queue.popleft()
                     queue.append(i)
-                    try:
-                        agent_output = learners[i].actor_model.sample_actions(env_output)
-                    except Exception as e:
-                        logging.info(f"Failed on learners[{i}]")
-                        raise RuntimeError
+                    # try:
+                    agent_output = learners[i].actor_model.sample_actions(env_output)
+                    # except Exception as e:
+                    #     logging.info(f"Failed on learners[{i}]: {e}\n{env_output['obs']['active_player_t-0'][0][0]}")
+                    #     raise RuntimeError
 
                     timings.time("model")
 
