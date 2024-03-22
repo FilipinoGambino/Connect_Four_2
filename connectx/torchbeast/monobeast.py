@@ -401,7 +401,6 @@ def act(
                     timings.time("step")
                     fill_buffers_inplace(learners[i].buffers[index], dict(**env_output, **agent_output), t)
                     timings.time("write")
-                    logging.info(f"")
             full_queue.put(index)
 
         if actor_index == 0:
@@ -431,10 +430,10 @@ def load_batches(
 
     batches = {}
     for learner in learners:
-        batches[learner.id_] = stack_buffers([learner.buffers[m] for m in indices], dim=1)
+        batches.update({learner.id_: stack_buffers([learner.buffers[m] for m in indices], dim=1)})
     timings.time("batch")
     for id_, batch in batches.items():
-        batches[id_] = buffers_apply(batch, lambda x: x.to(device=flags.learner_device, non_blocking=True))
+        batches.update({id_: buffers_apply(batch, lambda x: x.to(device=flags.learner_device, non_blocking=True))})
     timings.time("device")
     for m in indices:
         free_queue.put(m)
@@ -690,7 +689,7 @@ def train(flags):
             name=f"actor-{i}",
             args=(
                 flags,
-                learners[0].teacher_flags, # Using the same teacher flags, but not the same teachers
+                learners[0].teacher_flags, # Using the same teacher flags
                 i,
                 free_queue,
                 full_queue,
