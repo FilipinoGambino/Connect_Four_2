@@ -6,16 +6,8 @@ from torch import nn
 import numpy as np
 
 from ..utility_constants import BOARD_SIZE
-
+import itertools
 import logging
-
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
-
 class DictInputLayer(nn.Module):
     @staticmethod
     def forward(

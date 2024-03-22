@@ -8,15 +8,6 @@ from .obs_spaces import BaseObsSpace
 from .reward_spaces import GameResultReward
 from ..connectx_game.game import Game
 
-import logging
-
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
-
 
 class ConnectFour(gym.Env):
     metadata = {'render_modes': ['human']}

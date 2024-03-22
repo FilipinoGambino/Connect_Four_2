@@ -8,15 +8,9 @@ from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, Union
 
 from .in_blocks import DictInputLayer
 from ..connectx_gym.reward_spaces import RewardSpec
-from ..utility_constants import BOARD_SIZE, IN_A_ROW
+from ..utility_constants import BOARD_SIZE
 import logging
 
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 class DictActor(nn.Module):
     def __init__(
@@ -57,6 +51,8 @@ class DictActor(nn.Module):
             torch.full_like(logits, fill_value=float("-inf")),
             torch.zeros_like(logits)
         )
+        if logits.isnan().any():
+            logging.warning(f"-------------------FIN-------------------")
         actions = DictActor.logits_to_actions(logits, sample)
 
         return logits, actions

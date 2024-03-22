@@ -7,14 +7,6 @@ from typing import Dict, List, Union, Tuple
 
 from .reward_spaces import BaseRewardSpace
 
-import logging
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
-
 
 class LoggingEnv(gym.Wrapper):
     def __init__(self, env: gym.Env, reward_space: BaseRewardSpace):

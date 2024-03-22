@@ -4,14 +4,6 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-import logging
-
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
 
 class AttnVector(nn.Module):
     def __init__(

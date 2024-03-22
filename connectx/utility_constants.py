@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.signal import convolve2d
 
 BOARD_SIZE = (6,7)
 IN_A_ROW = 4

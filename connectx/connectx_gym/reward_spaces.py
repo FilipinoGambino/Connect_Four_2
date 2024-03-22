@@ -8,6 +8,15 @@ from typing import NamedTuple, Tuple, Dict
 from ..connectx_game.game import Game
 from ..utility_constants import BOARD_SIZE, IN_A_ROW, GAME_STATUS, VICTORY_KERNELS
 
+
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
+
+
 class RewardSpec(NamedTuple):
     reward_min: float
     reward_max: float

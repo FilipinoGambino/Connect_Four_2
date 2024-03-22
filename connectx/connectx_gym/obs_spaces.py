@@ -7,15 +7,6 @@ from typing import Dict, Tuple
 from ..connectx_game.game import Game
 from ..utility_constants import BOARD_SIZE, IN_A_ROW
 
-import logging
-
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
-
 
 class BaseObsSpace(ABC):
     # NB: Avoid using Discrete() space, as it returns a shape of ()

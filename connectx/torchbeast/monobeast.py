@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import logging
 import math
 from omegaconf import OmegaConf
@@ -170,8 +171,13 @@ def act(
         free_queue: mp.SimpleQueue,
         full_queue: mp.SimpleQueue,
         actor_model: torch.nn.Module,
+        adversary_model: torch.nn.Module,
         buffers: Buffers,
 ):
+    if adversary_model is None:
+        adversary_model = copy.deepcopy(actor_model)
+        adversary_model.eval()
+
     if flags.debug:
         catch_me = AssertionError
     else:
@@ -195,6 +201,7 @@ def act(
             # Do new rollout.
             for t in range(flags.unroll_length):
                 timings.reset()
+
                 agent_output = actor_model.sample_actions(env_output)
                 timings.time("model")
 
@@ -218,6 +225,18 @@ def act(
                 timings.time("step")
                 fill_buffers_inplace(buffers[index], dict(**env_output, **agent_output), t + 1)
                 timings.time("write")
+
+                agent_output = adversary_model.select_best_actions(env_output)
+                timings.time("model")
+
+                env_output = env.step(agent_output["actions"])
+                if env_output["done"].any():
+                    # Cache reward, done, and info from the terminal step
+                    # cached_done = env_output["done"]
+                    _ = env.reset()
+                    # env_output["done"] = cached_done
+
+                timings.time("step")
             full_queue.put(index)
 
         if actor_index == 0:
@@ -226,7 +245,7 @@ def act(
     except KeyboardInterrupt:
         pass  # Return silently.
     except catch_me as e:
-        logging.error("Exception in worker process %i", actor_index)
+        logging.error(f"Exception in worker process {actor_index}")
         traceback.print_exc()
         print()
         raise e
@@ -516,28 +535,6 @@ def train(flags):
     n_trainable_params = sum(p.numel() for p in actor_model.parameters() if p.requires_grad)
     logging.info(f'Training model with {n_trainable_params:,d} parameters.')
 
-    actor_processes = []
-    free_queue = mp.SimpleQueue()
-    full_queue = mp.SimpleQueue()
-
-    for i in range(flags.num_actors):
-        actor_start = threading.Thread if flags.debug else mp.Process
-        actor = actor_start(
-            target=act,
-            args=(
-                flags,
-                teacher_flags,
-                i,
-                free_queue,
-                full_queue,
-                actor_model,
-                buffers,
-            ),
-        )
-        actor.start()
-        actor_processes.append(actor)
-        time.sleep(0.5)
-
     learner_model = create_model(flags, flags.learner_device, teacher_model_flags=teacher_flags, is_teacher_model=False)
     if checkpoint_state is not None:
         learner_model.load_state_dict(checkpoint_state["model_state_dict"])
@@ -581,6 +578,30 @@ def train(flags):
                             f"Setting flags.teacher_baseline_cost to 0.")
         flags.teacher_kl_cost = 0.
         flags.teacher_baseline_cost = 0.
+
+    actor_processes = []
+    free_queue = mp.SimpleQueue()
+    full_queue = mp.SimpleQueue()
+
+    for i in range(flags.num_actors):
+        actor_start = threading.Thread if flags.debug else mp.Process
+        actor = actor_start(
+            target=act,
+            args=(
+                flags,
+                teacher_flags,
+                i,
+                free_queue,
+                full_queue,
+                actor_model,
+                teacher_model,
+                buffers,
+            ),
+        )
+        actor.start()
+        actor_processes.append(actor)
+        time.sleep(0.5)
+
 
     def lr_lambda(epoch):
         min_pct = flags.min_lr_mod
