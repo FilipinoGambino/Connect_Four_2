@@ -49,6 +49,7 @@ logging.basicConfig(
     ),
     level=0,
 )
+logger = logging.getLogger(__name__)
 
 @contextmanager
 def acquire_timeout(lock, timeout):
@@ -171,19 +172,15 @@ def act(
         free_queue: mp.SimpleQueue,
         full_queue: mp.SimpleQueue,
         actor_model: torch.nn.Module,
-        adversary_model: torch.nn.Module,
         buffers: Buffers,
 ):
-    if adversary_model is None:
-        adversary_model = copy.deepcopy(actor_model)
-        adversary_model.eval()
 
     if flags.debug:
         catch_me = AssertionError
     else:
         catch_me = Exception
     try:
-        logging.info(f"Actor {actor_index} started.")
+        logger.info(f"Actor {actor_index} started.")
 
         timings = prof.Timings()
 
@@ -221,31 +218,19 @@ def act(
                     env_output["done"] = cached_done
 
                     env_output["info"].update(cached_info_logging)
-
                 timings.time("step")
                 fill_buffers_inplace(buffers[index], dict(**env_output, **agent_output), t + 1)
                 timings.time("write")
 
-                agent_output = adversary_model.select_best_actions(env_output)
-                timings.time("model")
-
-                env_output = env.step(agent_output["actions"])
-                if env_output["done"].any():
-                    # Cache reward, done, and info from the terminal step
-                    # cached_done = env_output["done"]
-                    _ = env.reset()
-                    # env_output["done"] = cached_done
-
-                timings.time("step")
             full_queue.put(index)
 
         if actor_index == 0:
-            logging.info(f"Actor {actor_index}: {timings.summary()}")
+            logger.info(f"Actor {actor_index}: {timings.summary()}")
 
     except KeyboardInterrupt:
         pass  # Return silently.
     except catch_me as e:
-        logging.error(f"Exception in worker process {actor_index}")
+        logger.error(f"Exception in worker process {actor_index}")
         traceback.print_exc()
         print()
         raise e
@@ -413,7 +398,6 @@ def learn(
                 combined_teacher_kl_loss,
                 reduction=flags.reduction
             )
-
             if flags.use_teacher:
                 teacher_baseline_loss = flags.teacher_baseline_cost * compute_baseline_loss(
                     values,
@@ -494,7 +478,7 @@ def learn(
             actor_model.load_state_dict(learner_model.state_dict())
             return stats, total_games_played
         except Exception as e:
-            logging.info(f"{e}")
+            logger.info(f"{e}")
 
 def train(flags):
     # Necessary for multithreading and multiprocessing
@@ -533,7 +517,29 @@ def train(flags):
     actor_model.eval()
     actor_model.share_memory()
     n_trainable_params = sum(p.numel() for p in actor_model.parameters() if p.requires_grad)
-    logging.info(f'Training model with {n_trainable_params:,d} parameters.')
+    logger.info(f'Training model with {n_trainable_params:,d} parameters.')
+
+    actor_processes = []
+    free_queue = mp.SimpleQueue()
+    full_queue = mp.SimpleQueue()
+
+    for i in range(flags.num_actors):
+        actor_start = threading.Thread if flags.debug else mp.Process
+        actor = actor_start(
+            target=act,
+            args=(
+                flags,
+                teacher_flags,
+                i,
+                free_queue,
+                full_queue,
+                actor_model,
+                buffers,
+            ),
+        )
+        actor.start()
+        actor_processes.append(actor)
+        time.sleep(0.5)
 
     learner_model = create_model(flags, flags.learner_device, teacher_model_flags=teacher_flags, is_teacher_model=False)
     if checkpoint_state is not None:
@@ -578,30 +584,6 @@ def train(flags):
                             f"Setting flags.teacher_baseline_cost to 0.")
         flags.teacher_kl_cost = 0.
         flags.teacher_baseline_cost = 0.
-
-    actor_processes = []
-    free_queue = mp.SimpleQueue()
-    full_queue = mp.SimpleQueue()
-
-    for i in range(flags.num_actors):
-        actor_start = threading.Thread if flags.debug else mp.Process
-        actor = actor_start(
-            target=act,
-            args=(
-                flags,
-                teacher_flags,
-                i,
-                free_queue,
-                full_queue,
-                actor_model,
-                teacher_model,
-                buffers,
-            ),
-        )
-        actor.start()
-        actor_processes.append(actor)
-        time.sleep(0.5)
-
 
     def lr_lambda(epoch):
         min_pct = flags.min_lr_mod
@@ -663,7 +645,7 @@ def train(flags):
                         wandb.log(stats, step=step)
             timings.time("learn")
         if learner_idx == 0:
-            logging.info(f"Batch and learn timing statistics: {timings.summary()}")
+            logger.info(f"Batch and learn timing statistics: {timings.summary()}")
 
     for m in range(flags.num_buffers):
         free_queue.put(m)
@@ -679,7 +661,7 @@ def train(flags):
         learner_threads.append(thread)
 
     def checkpoint(checkpoint_path: Union[str, Path]):
-        logging.info(f"Saving checkpoint to {checkpoint_path}")
+        logger.info(f"Saving checkpoint to {checkpoint_path}")
         torch.save(
             {
                 "model_state_dict": actor_model.state_dict(),
@@ -719,14 +701,14 @@ def train(flags):
 
             sps = (step - start_step) / (timer() - start_time)
             bps = (step - start_step) / (t * b) / (timer() - start_time)
-            logging.info(f"Steps {step:d} @ {sps:.1f} SPS / {bps:.1f} BPS. Stats:\n{pprint.pformat(stats)}")
+            logger.info(f"Steps {step:d} @ {sps:.1f} SPS / {bps:.1f} BPS. Stats:\n{pprint.pformat(stats)}")
     except KeyboardInterrupt:
         # Try checkpointing and joining actors then quit.
         return
     else:
         for thread in learner_threads:
             thread.join()
-        logging.info(f"Learning finished after {step:d} steps.")
+        logger.info(f"Learning finished after {step:d} steps.")
     finally:
         for _ in range(flags.num_actors):
             free_queue.put(None)

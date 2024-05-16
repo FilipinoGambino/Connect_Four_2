@@ -5,43 +5,45 @@ from ..utility_constants import BOARD_SIZE
 
 
 class Game:
-    def __init__(self):
-        self.board = np.zeros(shape=BOARD_SIZE, dtype=np.uint8)
-        self.turn = 0
-        self.players = [Player(1), Player(2)]
-
-    def update(self, obs):
-        self.board = np.array(obs['board'], dtype=np.uint8).reshape(BOARD_SIZE)
-        self.turn = obs['step']
+    def __init__(self, config):
+        self.config = config
+        self.rows = config['rows']
+        self.cols = config['columns']
+        self.board_dims = (self.rows, self.cols)
+        self.in_a_row = config['inarow']
+        self.board = np.zeros(shape=self.board_dims, dtype=np.uint8)
+        self.last_player_mark = self.p1_mark
 
     def step(self, action):
         row = self.get_lowest_available_row(action)
-        self.board[row, action] = self.players[self.turn % 2].mark
-        self.turn += 1
+        self.last_player_mark = self.current_player_mark
+        self.board[row, action] = self.current_player_mark
 
     def get_lowest_available_row(self, column):
-        for row in range(BOARD_SIZE[0]-1,-1,-1):
+        for row in range(self.rows-1, -1, -1):
             if self.board[row,column] == 0:
                 return row
-        raise StopIteration(f"Column {column} is full. {self.board}")
+        raise StopIteration(f"Column {column} is full.\n{self.board}")
 
     @property
-    def active_player(self):
-        '''
-        Only called after step which increments turn
-        :return: The active player object
-        '''
-        # assert self.turn == self.board.size - np.count_nonzero(self.board==0)
-        return self.players[self.turn % 2]
+    def current_player_mark(self):
+        return self.p1_mark if self.is_p1_turn else self.p2_mark
 
     @property
-    def inactive_player(self):
-        '''
-        Only called after step which increments turn
-        :return: The inactive player object
-        '''
-        # assert self.turn == self.board.size - np.count_nonzero(self.board==0)
-        return self.players[(self.turn + 1) % 2]
+    def turn(self):
+        return np.count_nonzero(self.board)
+
+    @property
+    def is_p1_turn(self):
+        return self.turn % 2 == 0
+
+    @property
+    def p1_mark(self):
+        return 1
+
+    @property
+    def p2_mark(self):
+        return 2
 
     @property
     def max_turns(self):

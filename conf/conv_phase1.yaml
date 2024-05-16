@@ -13,11 +13,11 @@ project: ConnectX
 # The wandb user to log to
 entity: filipinogambino
 # The wandb group for the run
-group: adversarial
+group: after_mcts
 
 # Parameters to overwrite
 use_mixed_precision: false
-total_steps: 1e5
+total_steps: 1e6
 batch_size: 8
 checkpoint_freq: 60.
 num_actors: 1

@@ -1,32 +1,30 @@
 import copy
 import gym
-import math
+from logging import getLogger
 import numpy as np
 import torch
 from typing import Dict, List, Union, Tuple
 
 from .reward_spaces import BaseRewardSpace
 
+logger = getLogger(__name__)
 
 class LoggingEnv(gym.Wrapper):
     def __init__(self, env: gym.Env, reward_space: BaseRewardSpace):
         super(LoggingEnv, self).__init__(env)
         self.reward_space = reward_space
         self.vals_peak = {}
-        self.reward_sum = [0., 0.]
-        self.sum_reward = [0.]
+        # self.p1_cumulative_reward = 0.
+        # self.p2_cumulative_reward = 0.
 
-    def info(self, info: Dict[str, np.ndarray], reward: int) -> Dict[str, np.ndarray]:
+    def info(self, info: Dict[str, np.ndarray], rewards: List[int]) -> Dict[str, np.ndarray]:
         info = copy.copy(info)
-        step = self.env.unwrapped.turn
-        logs = dict(step=step)
+        logs = dict()
 
-        self.sum_reward[0] += reward
-        logs['all_rewards'] = self.sum_reward
-        self.reward_sum[(step-1) % 2] += reward
-        logs["p1_rewards"] = [self.reward_sum[0]]
-        logs["p2_rewards"] = [self.reward_sum[1]]
-
+        # self.p1_cumulative_reward += rewards[0]
+        # self.p2_cumulative_reward += rewards[1]
+        # logs["total_p1_rewards"] = self.p1_cumulative_reward
+        # logs["total_p2_rewards"] = self.p2_cumulative_reward
 
         info.update({f"LOGGING_{key}": np.array(val, dtype=np.float32) for key, val in logs.items()})
         # Add any additional info from the reward space
@@ -34,32 +32,33 @@ class LoggingEnv(gym.Wrapper):
         return info
 
     def reset(self, **kwargs):
-        obs, reward, done, info = super(LoggingEnv, self).reset(**kwargs)
-        self.sum_reward = [0.]
-        self.reward_sum = [0., 0.]
-        return obs, [reward], done, self.info(info, reward)
+        obs, rewards, done, info = super(LoggingEnv, self).reset(**kwargs)
+        # self.p1_cumulative_reward = 0.
+        # self.p2_cumulative_reward = 0.
+        return obs, rewards, done, self.info(info, rewards)
 
     def step(self, action: Dict[str, np.ndarray]):
-        obs, reward, done, info = super(LoggingEnv, self).step(action)
-        return obs, [reward], done, self.info(info, reward)
+        obs, rewards, done, info = super(LoggingEnv, self).step(action)
+        return obs, rewards, done, self.info(info, rewards)
 
 
 class RewardSpaceWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env, reward_space: BaseRewardSpace):
         super(RewardSpaceWrapper, self).__init__(env)
+        self.env = env
         self.reward_space = reward_space
 
-    def _get_rewards_and_done(self) -> Tuple[Tuple[float, float], bool]:
-        rewards, done = self.reward_space.compute_rewards(self.unwrapped.game_state)
+    def _get_rewards_and_done(self, game_state) -> Tuple[Tuple[float, float], bool]:
+        rewards, done = self.reward_space.compute_rewards(game_state)
         return rewards, done
 
     def reset(self, **kwargs):
         obs, _, _, info = super(RewardSpaceWrapper, self).reset(**kwargs)
-        return obs, *self._get_rewards_and_done(), info
+        return obs, *self._get_rewards_and_done(obs), info
 
     def step(self, action):
         obs, _, _, info = super(RewardSpaceWrapper, self).step(action)
-        return obs, *self._get_rewards_and_done(), info
+        return obs, *self._get_rewards_and_done(obs), info
 
 class VecEnv(gym.Env):
     def __init__(self, envs: List[gym.Env]):

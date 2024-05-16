@@ -12,6 +12,7 @@ from connectx.connectx_gym import create_reward_space, ConnectFour, wrappers
 from connectx.nns import create_model, models
 from connectx.utils import flags_to_namespace
 
+
 MODEL_CONFIG_PATH = Path(__file__).parent / "model_config.yaml"
 RL_AGENT_CONFIG_PATH = Path(__file__).parent / "rl_agent_config.yaml"
 CHECKPOINT_PATH,_ = list(Path(__file__).parent.glob('*.pt'))
@@ -25,6 +26,7 @@ logging.basicConfig(
     ),
     level=0,
 )
+
 
 class RLAgent:
     def __init__(self, player_id):
@@ -45,8 +47,7 @@ class RLAgent:
 
         env = ConnectFour(
             act_space=self.model_flags.act_space(),
-            obs_space=self.model_flags.obs_space(),
-            autoplay=False
+            obs_space=self.model_flags.obs_space()
         )
         reward_space = create_reward_space(self.model_flags)
         env = wrappers.RewardSpaceWrapper(env, reward_space)
@@ -78,6 +79,7 @@ class RLAgent:
             outputs = self.model.select_best_actions(env_output)
 
         action = outputs["actions"].item()
+        _ = self.env.step(action)
 
         self.stopwatch.stop()
 
@@ -94,9 +96,14 @@ class RLAgent:
 
     def preprocess(self, obs):
         if obs['step'] == 0:
-            self.unwrapped_env.reset()
-        else:
-            self.unwrapped_env.manual_step(obs)
+            return self.env.reset()
+        if obs['step'] == 1:
+            self.env.reset()
+        old_board = self.env.board
+        new_board = np.array(obs['board']).reshape(old_board.shape)
+        difference = np.subtract(new_board, old_board)
+        opponent_action = np.argmax(difference) % self.env.game_state.cols
+        return self.env.step(opponent_action)
 
     def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
         """

@@ -1,11 +1,15 @@
 from abc import ABC, abstractmethod
+from collections import deque
+import copy
 import gym
-import math
+from logging import getLogger
 import numpy as np
 from typing import Dict, Tuple
 
 from ..connectx_game.game import Game
 from ..utility_constants import BOARD_SIZE, IN_A_ROW
+
+logger = getLogger(__name__)
 
 
 class BaseObsSpace(ABC):
@@ -121,15 +125,16 @@ class HistoricalObs(BaseObsSpace, ABC):
     ) -> gym.spaces.Dict:
         x = board_dims[0]
         y = board_dims[1]
+        # TODO Could pass flags here to easily change history length
         return gym.spaces.Dict({
-            "active_player_t-0": gym.spaces.MultiBinary((x, y)),
-            "active_player_t-1": gym.spaces.MultiBinary((x, y)),
-            "active_player_t-2": gym.spaces.MultiBinary((x, y)),
-            "active_player_t-3": gym.spaces.MultiBinary((x, y)),
-            "inactive_player_t-0": gym.spaces.MultiBinary((x, y)),
-            "inactive_player_t-1": gym.spaces.MultiBinary((x, y)),
-            "inactive_player_t-2": gym.spaces.MultiBinary((x, y)),
-            "inactive_player_t-3": gym.spaces.MultiBinary((x, y)),
+            "p1_turn-0": gym.spaces.MultiBinary((x, y)),
+            "p1_turn-1": gym.spaces.MultiBinary((x, y)),
+            "p1_turn-2": gym.spaces.MultiBinary((x, y)),
+            "p1_turn-3": gym.spaces.MultiBinary((x, y)),
+            "p2_turn-0": gym.spaces.MultiBinary((x, y)),
+            "p2_turn-1": gym.spaces.MultiBinary((x, y)),
+            "p2_turn-2": gym.spaces.MultiBinary((x, y)),
+            "p2_turn-3": gym.spaces.MultiBinary((x, y)),
             "p1_active": gym.spaces.MultiBinary((x,y)),
             "turn": gym.spaces.Box(low=0, high=1, shape=[1, 1]),
         })
@@ -142,8 +147,10 @@ class _HistoricalObsWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env):
         super(_HistoricalObsWrapper, self).__init__(env)
         self._empty_obs = {}
-        turns = math.prod(BOARD_SIZE)
-        self.historical_obs = np.zeros(shape=(turns,*BOARD_SIZE), dtype=np.int64)
+        self.history_length = 4
+        self.historical_obs1 = deque(maxlen=self.history_length)
+        self.historical_obs2 = deque(maxlen=self.history_length)
+        self.reset_obs()
 
         for key, spec in HistoricalObs().get_obs_spec().spaces.items():
             if isinstance(spec, gym.spaces.MultiBinary):
@@ -153,54 +160,53 @@ class _HistoricalObsWrapper(gym.Wrapper):
             else:
                 raise NotImplementedError(f"{type(spec)} is not an accepted observation space.")
 
+    def reset_obs(self):
+        for _ in range(self.history_length):
+            self.historical_obs1.appendleft(np.zeros(shape=(1, *BOARD_SIZE), dtype=np.int64))
+            self.historical_obs2.appendleft(np.zeros(shape=(1, *BOARD_SIZE), dtype=np.int64))
+
     def reset(self, **kwargs):
-        observation, reward, done, info = self.env.reset(**kwargs)
-        self.historical_obs = np.zeros_like(self.historical_obs)
-        return self.observation(observation), reward, done, info
+        self.reset_obs()
+        observation, reward, done, info = self.env.reset(**kwargs) # noqa
+        return self.update_obs(observation), reward, done, info
 
     def step(self, action):
-        observation, reward, done, info = self.env.step(action)
-        return self.observation(observation), reward, done, info
+        observation, reward, done, info = self.env.step(action) # noqa
+        return self.update_obs(observation), reward, done, info
 
-    def observation(self, observation: Game) -> Dict[str, np.ndarray]:
-        board = observation.board
-        active_p = observation.active_player
-        inactive_p = observation.inactive_player
+    def update_obs(self, game) -> Dict[str, np.ndarray]:
+        board = np.reshape(game.board, newshape=(1, *game.board_dims))
+        if game.is_p1_turn:
+            p1_obs = np.where(board == game.p1_mark, 1, 0)
+            self.historical_obs1.appendleft(copy.copy(p1_obs))
+        else:
+            p2_obs = np.where(board == game.p2_mark, 1, 0)
+            self.historical_obs2.appendleft(copy.copy(p2_obs))
 
-        turn = observation.turn
-        norm_turn = turn / observation.board.size
-        self.historical_obs[turn] = board
+        p1_obs = np.stack(
+            self.historical_obs1,
+            dtype=np.int64,
+            axis=0
+        )
+        p2_obs = np.stack(
+            self.historical_obs2,
+            dtype=np.int64,
+            axis=0
+        )
 
-        # Checks if the previous observation called this wrapper
-        if turn >= 2 and not self.historical_obs[turn-1].any():
-            diff = np.subtract(self.historical_obs[turn], self.historical_obs[turn-2])
-            last_move = np.where(diff==inactive_p.mark, inactive_p.mark, 0)
-            self.historical_obs[turn-1] = np.add(self.historical_obs[turn-2], last_move)
+        p1_turn = np.full(
+            shape=game.board_dims,
+            fill_value=game.is_p1_turn,
+            dtype=np.int64
+        )
+        norm_turn = np.array(game.turn / game.max_turns, dtype=np.float32).reshape([1,1])
 
-        obs = {
-            "active_player_t-0": np.where(self.historical_obs[max(0,turn-1)]==active_p.mark, 1, 0),
-            "active_player_t-1": np.where(self.historical_obs[max(0,turn-3)]==active_p.mark, 1, 0),
-            "active_player_t-2": np.where(self.historical_obs[max(0,turn-5)]==active_p.mark, 1, 0),
-            "active_player_t-3": np.where(self.historical_obs[max(0,turn-7)]==active_p.mark, 1, 0),
-            # "active_player_t-4": np.where(self.historical_obs[max(0,turn-9)]==active_p.mark, 1, 0),
-            # "active_player_t-5": np.where(self.historical_obs[max(0,turn-11)]==active_p.mark, 1, 0),
-            # "active_player_t-6": np.where(self.historical_obs[max(0,turn-12)]==active_p.mark, 1, 0),
-            "inactive_player_t-0": np.where(self.historical_obs[max(0,turn)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-1": np.where(self.historical_obs[max(0,turn-2)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-2": np.where(self.historical_obs[max(0,turn-4)]==inactive_p.mark, 1, 0),
-            "inactive_player_t-3": np.where(self.historical_obs[max(0,turn-6)]==inactive_p.mark, 1, 0),
-            # "inactive_player_t-4": np.where(self.historical_obs[max(0,turn-8)]==inactive_p.mark, 1, 0),
-            # "inactive_player_t-5": np.where(self.historical_obs[max(0,turn-10)]==inactive_p.mark, 1, 0),
-            # "inactive_player_t-6": np.where(self.historical_obs[max(0,turn-12)]==inactive_p.mark, 1, 0),
-            "p1_active": np.full_like(board, fill_value=active_p.mark-1, dtype=np.int64), # Normalized
-            "turn": np.full(shape=(1,1), fill_value=norm_turn, dtype=np.float32),
+        player1_history = {f"p1_turn-{x}": p1_obs[x].reshape(*BOARD_SIZE) for x in range(self.history_length)}
+        player2_history = {f"p2_turn-{x}": p2_obs[x].reshape(*BOARD_SIZE) for x in range(self.history_length)}
+
+        return {
+            **player1_history,
+            **player2_history,
+            "p1_active": p1_turn,
+            "turn": norm_turn,
         }
-        # logging.info(f"Turn: {turn}")
-        # for key in obs.keys():
-        #     if key in ["active_player_t-0",
-        #                "active_player_t-1",
-        #                "active_player_t-2",
-        #                "active_player_t-3"]:
-        #         logging.info(f"\n{obs[key]}")
-        # logging.info("\n")
-        return obs

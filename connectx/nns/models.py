@@ -9,7 +9,9 @@ from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, Union
 from .in_blocks import DictInputLayer
 from ..connectx_gym.reward_spaces import RewardSpec
 from ..utility_constants import BOARD_SIZE
-import logging
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class DictActor(nn.Module):
@@ -26,7 +28,6 @@ class DictActor(nn.Module):
             self.n_actions,
             kernel_size=BOARD_SIZE
         )
-
 
     def forward(
             self,
@@ -52,7 +53,8 @@ class DictActor(nn.Module):
             torch.zeros_like(logits)
         )
         if logits.isnan().any():
-            logging.warning(f"-------------------FIN-------------------")
+            logger.warning(f"-------------------FIN-------------------")
+            raise RuntimeError(f"Logits contain NaN value(s)\n{logits}")
         actions = DictActor.logits_to_actions(logits, sample)
 
         return logits, actions
@@ -106,15 +108,12 @@ class BaselineLayer(nn.Module):
             self.linear = MultiLinear(n_value_heads, in_channels, 1)
         else:
             self.linear = nn.Linear(in_channels, 1)
-        if reward_space.zero_sum:
-            self.activation = nn.Softmax(dim=-1)
-        else:
-            self.activation = nn.Sigmoid()
-        if not reward_space.only_once:
-            # Expand reward space to n_steps for rewards that occur more than once
-            reward_space_expanded = np.prod(BOARD_SIZE)
-            self.reward_min *= reward_space_expanded
-            self.reward_max *= reward_space_expanded
+        self.activation = nn.Sigmoid()
+        # if not reward_space.only_once:
+        #     # Expand reward space to n_steps for rewards that occur more than once
+        #     reward_space_expanded = np.prod(BOARD_SIZE)
+        #     self.reward_min *= reward_space_expanded
+        #     self.reward_max *= reward_space_expanded
 
     def forward(self, x: torch.Tensor,
                 input_mask: Optional[torch.Tensor]=None,
