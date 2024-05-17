@@ -26,6 +26,7 @@ logging.basicConfig(
     ),
     level=0,
 )
+logger = logging.getLogger(__name__)
 
 
 class RLAgent:
@@ -57,8 +58,6 @@ class RLAgent:
         env = wrappers.PytorchEnv(env, device_id)
         self.env = wrappers.DictEnv(env)
 
-        self.action_placeholder = torch.ones(1)
-
         self.model = create_model(self.model_flags, self.device)
         checkpoint_states = torch.load(CHECKPOINT_PATH, map_location=self.device)
         self.model.load_state_dict(checkpoint_states["model_state_dict"])
@@ -70,16 +69,14 @@ class RLAgent:
         self.stopwatch.reset()
 
         self.stopwatch.start("Observation processing")
-        self.preprocess(obs)
-
-        env_output = self.get_env_output()
+        env_output = self.preprocess(obs)
 
         self.stopwatch.stop().start("Model inference")
         with torch.no_grad():
             outputs = self.model.select_best_actions(env_output)
 
         action = outputs["actions"].item()
-        _ = self.env.step(action)
+        _ = self.env.step([action])
 
         self.stopwatch.stop()
 
@@ -91,48 +88,22 @@ class RLAgent:
         print(" - ".join([value_msg, timing_msg, overage_time_msg]))
         return action
 
-    def get_env_output(self):
-        return self.env.step(self.action_placeholder)
-
     def preprocess(self, obs):
         if obs['step'] == 0:
             return self.env.reset()
         if obs['step'] == 1:
             self.env.reset()
-        old_board = self.env.board
+        old_board = self.env.unwrapped[0].board
         new_board = np.array(obs['board']).reshape(old_board.shape)
         difference = np.subtract(new_board, old_board)
-        opponent_action = np.argmax(difference) % self.env.game_state.cols
-        return self.env.step(opponent_action)
-
-    def aggregate_augmented_predictions(self, policy: torch.Tensor) -> torch.Tensor:
-        """
-        Moves the predictions to the cpu, applies the inverse of all augmentations,
-        and then returns the mean prediction for each available action.
-        """
-        return policy.cpu()
-
-    @property
-    def unwrapped_env(self) -> ConnectFour:
-        return self.env.unwrapped[0]
+        opponent_action = np.argmax(difference) % self.env.unwrapped[0].game_state.cols
+        return self.env.step([opponent_action])
 
 
 if __name__=="__main__":
     from kaggle_environments import evaluate, make
     env = make('connectx', debug=False)
 
-    env.reset()
-    env.run([RLAgent(1), RLAgent(2)])
-    print(f"\np1 v p2\n{env.render(mode='ansi')}")
-    env.reset()
-    env.run([RLAgent(1), 'random'])
-    print(f"\np1 v random\n{env.render(mode='ansi')}")
-    env.reset()
-    env.run(['negamax', RLAgent(2)])
-    print(f"\np2 v negamax\n{env.render(mode='ansi')}")
-    env.reset()
-    env.run([RLAgent(1), 'negamax'])
-    print(f"\np1 v negamax\n{env.render(mode='ansi')}")
     env.reset()
 
     def mean_reward1(rewards):
@@ -145,7 +116,7 @@ if __name__=="__main__":
     # Run multiple episodes to estimate its performance.
     print("My Agent vs Random Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100)))
     print("My Agent vs Random Agent:", mean_reward2(evaluate("connectx", ["random", RLAgent(2)], num_episodes=100)))
-    print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=10)))
-    print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=10)))
+    print("My Agent vs Negamax Agent:", mean_reward1(evaluate("connectx", [RLAgent(1), "negamax"], num_episodes=100)))
+    print("My Agent vs Negamax Agent:", mean_reward2(evaluate("connectx", ["negamax", RLAgent(2)], num_episodes=100)))
 
     # print(evaluate("connectx", [RLAgent(1), "random"], num_episodes=100))
