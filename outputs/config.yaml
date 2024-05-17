@@ -1,4 +1,4 @@
-name: conv_phase1
+name: conv_phase2
 project: ConnectX
 entity: filipinogambino
 group: after_mcts
@@ -27,17 +27,18 @@ obs_space: HistoricalObs
 reward_space: GameResultReward
 optimizer_class: Adam
 optimizer_kwargs:
-  lr: 1.0e-05
+  lr: 1.0e-06
   eps: 0.0003
+  weight_decay: 0.001
 min_lr_mod: 0.02
 entropy_cost: 0.001
 baseline_cost: 1.0
 teacher_kl_cost: 0.005
 lmb: 0.8
 reduction: mean
-use_teacher: false
-teacher_load_dir: null
-teacher_checkpoint_file: null
+use_teacher: true
+teacher_load_dir: outputs/05-16/15-13-45
+teacher_checkpoint_file: 1000192_weights.pt
 actor_device: cpu
 learner_device: cpu
 disable_wandb: false

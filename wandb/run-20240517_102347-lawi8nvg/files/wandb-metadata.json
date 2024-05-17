@@ -1,0 +1,45 @@
+{
+    "os": "Windows-10-10.0.22631-SP0",
+    "python": "3.9.6",
+    "heartbeatAt": "2024-05-17T15:23:48.314229",
+    "startedAt": "2024-05-17T15:23:47.830463",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "C:\\Users\\nick.gorichs\\PycharmProjects\\Connect_Four_2\\run_monobeast.py",
+    "codePathLocal": "run_monobeast.py",
+    "codePath": "run_monobeast.py",
+    "git": {
+        "remote": "https://github.com/FilipinoGambino/Connect_Four_2.git",
+        "commit": "8f0c3ece6d72c9aac2a13d862fb83bd175f82ed0"
+    },
+    "email": null,
+    "root": "C:/Users/nick.gorichs/PycharmProjects/Connect_Four_2",
+    "host": "WI-7C7X4S2",
+    "username": "Nick.Gorichs",
+    "executable": "C:\\Users\\nick.gorichs\\AppData\\Local\\Programs\\Python\\Python39\\python.exe",
+    "cpu_count": 4,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 1910.0,
+        "min": 0.0,
+        "max": 2112.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 1910.0,
+            "min": 0.0,
+            "max": 2112.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 236.73046493530273,
+            "used": 228.31107330322266
+        }
+    },
+    "memory": {
+        "total": 7.861743927001953
+    }
+}
