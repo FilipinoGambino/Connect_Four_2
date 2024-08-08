@@ -7,3 +7,5 @@ thousand game steps and failed to consistently outmatch the Negamax algorithm. T
 and after writing one up, I submitted it to the ongoing Kaggle compeition where it reached 43 out of 193 teams.
 To get higher, it would seem my agent would have to go first because didn't seem to be able to effectively take
 advantage of misplays as player two.
+
+https://github.com/FilipinoGambino/MCTS-Connect-Four
